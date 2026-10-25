@@ -1,96 +1,96 @@
-0.1s [log] TIZEN mock ready (usb none)
-0.1s [log] TIZEN registerKey MediaPlayPause
-0.1s [log] TIZEN registerKey MediaPlay
-0.1s [log] TIZEN registerKey MediaPause
-0.1s [log] TIZEN registerKey ChannelUp
-0.1s [log] TIZEN registerKey ChannelDown
-0.1s [log] TIZEN registerKey Info
-0.1s [log] TIZEN registerKey ColorF0Red
-0.1s [log] TIZEN registerKey ColorF1Green
-0.1s [log] TIZEN registerKey ColorF2Yellow
-0.1s [log] TIZEN registerKey ColorF3Blue
-0.1s [log] TIZEN registerKey 0
-0.1s [log] TIZEN registerKey 1
-0.1s [log] TIZEN registerKey 2
-0.1s [log] TIZEN registerKey 3
-0.1s [log] TIZEN registerKey 4
-0.1s [log] TIZEN registerKey 5
-0.1s [log] TIZEN registerKey 6
-0.1s [log] TIZEN registerKey 7
-0.1s [log] TIZEN registerKey 8
-0.1s [log] TIZEN registerKey 9
-0.1s [log] [BSO shell] Bent Steering 1.0.0
-0.1s loaded file:///home/runner/work/BSO/BSO/tizen/app/index.html
-0.3s [log] TIZEN screensaver ON
-0.3s [log] [BSO shell] site ready: /BSO/home/
-0.4s [log] TIZEN getAppsInfo
-10.0s [log] ASK home {"page":"home","host":"tizen","focus":0,"layer":null,"installed":6,"rail":["BSO TV","J R-dio","YouTube","Netflix","Prime Video","Pluto TV","Spotify","All apps"],"utils":["Make home","Add pictures","Samsung TV"],"blueprints":0,"apps":0,"pics":"","toast":null}
-10.7s shot 01-home
-12.0s key Enter
-12.4s [log] TIZEN screensaver OFF
-15.6s [log] [BSO shell] page /BSO/: list UULFvlG_ZnHoZLPv0CVWOC0a1Q: 200 videos
-15.7s [log] [BSO shell] page /BSO/: youtube error 150 on d3X8UQ7KcNA
-15.9s [log] [BSO shell] page /BSO/: youtube error 150 on ZpI0c6hpbbg
-16.0s [log] [BSO shell] page /BSO/: youtube error 150 on HiH86gwJRmk
-16.2s [log] [BSO shell] page /BSO/: youtube error 150 on pYr9QnXklm4
-16.4s [log] [BSO shell] page /BSO/: youtube error 150 on 5DQkBSAWlz0
-16.6s [log] [BSO shell] page /BSO/: youtube error 150 on WjDl5JMNro0
-16.7s [log] [BSO shell] page /BSO/: youtube error 150 on sxlqDcCT3FI
-16.9s [log] [BSO shell] page /BSO/: youtube error 150 on NcWJTiu36u4
-17.1s [log] [BSO shell] page /BSO/: youtube error 150 on HbEGBIjKRRw
-17.2s [log] [BSO shell] page /BSO/: youtube error 150 on qegaZFBwqdk
-17.4s [log] [BSO shell] page /BSO/: youtube error 150 on vwi21gCASKM
-17.4s [log] [BSO shell] page /BSO/: off the air: Bleepin' Jeep
-40.0s [log] ASK tv-30s {"page":"tv","started":true,"channel":1,"name":"Bleepin' Jeep","state":-1,"time":0,"title":"","adbreak":false,"notice":"Bleepin' Jeep is off the air"}
-40.7s shot 02-bsotv
-55.0s [log] ASK tv-45s {"page":"tv","started":true,"channel":1,"name":"Bleepin' Jeep","state":-1,"time":0,"title":"","adbreak":false,"notice":"Bleepin' Jeep is off the air"}
-55.6s shot 03-bsotv-later
-56.0s code 427
-56.5s [log] [BSO shell] page /BSO/: list UULFwdVOry0oNF9WIe_3uCfz9Q: 200 videos
+0.2s [log] TIZEN mock ready (usb none)
+0.2s [log] TIZEN registerKey MediaPlayPause
+0.2s [log] TIZEN registerKey MediaPlay
+0.2s [log] TIZEN registerKey MediaPause
+0.2s [log] TIZEN registerKey ChannelUp
+0.2s [log] TIZEN registerKey ChannelDown
+0.2s [log] TIZEN registerKey Info
+0.2s [log] TIZEN registerKey ColorF0Red
+0.2s [log] TIZEN registerKey ColorF1Green
+0.2s [log] TIZEN registerKey ColorF2Yellow
+0.2s [log] TIZEN registerKey ColorF3Blue
+0.2s [log] TIZEN registerKey 0
+0.2s [log] TIZEN registerKey 1
+0.2s [log] TIZEN registerKey 2
+0.2s [log] TIZEN registerKey 3
+0.2s [log] TIZEN registerKey 4
+0.2s [log] TIZEN registerKey 5
+0.2s [log] TIZEN registerKey 6
+0.2s [log] TIZEN registerKey 7
+0.2s [log] TIZEN registerKey 8
+0.2s [log] TIZEN registerKey 9
+0.2s [log] [BSO shell] Bent Steering 1.0.0
+0.3s loaded file:///home/runner/work/BSO/BSO/tizen/app/index.html
+0.5s [log] TIZEN screensaver ON
+0.5s [log] [BSO shell] site ready: /BSO/home/
+0.5s [log] TIZEN getAppsInfo
+10.1s [log] ASK home {"page":"home","host":"tizen","focus":0,"layer":null,"installed":6,"rail":["BSO TV","J R-dio","YouTube","Netflix","Prime Video","Pluto TV","Spotify","All apps"],"utils":["Make home","Add pictures","Samsung TV"],"blueprints":0,"apps":0,"pics":"","toast":null}
+10.8s shot 01-home
+12.1s key Enter
+12.3s [log] TIZEN screensaver OFF
+15.4s [log] [BSO shell] page /BSO/: list UULFvlG_ZnHoZLPv0CVWOC0a1Q: 200 videos
+15.6s [log] [BSO shell] page /BSO/: youtube error 150 on d3X8UQ7KcNA
+15.7s [log] [BSO shell] page /BSO/: youtube error 150 on ZpI0c6hpbbg
+15.8s [log] [BSO shell] page /BSO/: youtube error 150 on HiH86gwJRmk
+15.9s [log] [BSO shell] page /BSO/: youtube error 150 on pYr9QnXklm4
+16.0s [log] [BSO shell] page /BSO/: youtube error 150 on 5DQkBSAWlz0
+16.2s [log] [BSO shell] page /BSO/: youtube error 150 on WjDl5JMNro0
+16.4s [log] [BSO shell] page /BSO/: youtube error 150 on sxlqDcCT3FI
+16.5s [log] [BSO shell] page /BSO/: youtube error 150 on NcWJTiu36u4
+16.6s [log] [BSO shell] page /BSO/: youtube error 150 on HbEGBIjKRRw
+16.7s [log] [BSO shell] page /BSO/: youtube error 150 on qegaZFBwqdk
+16.8s [log] [BSO shell] page /BSO/: youtube error 150 on vwi21gCASKM
+16.8s [log] [BSO shell] page /BSO/: off the air: Bleepin' Jeep
+40.1s [log] ASK tv-30s {"page":"tv","started":true,"channel":1,"name":"Bleepin' Jeep","state":-1,"time":0,"title":"","adbreak":false,"notice":"Bleepin' Jeep is off the air"}
+40.8s shot 02-bsotv
+55.1s [log] ASK tv-45s {"page":"tv","started":true,"channel":1,"name":"Bleepin' Jeep","state":-1,"time":0,"title":"","adbreak":false,"notice":"Bleepin' Jeep is off the air"}
+55.7s shot 03-bsotv-later
+56.1s code 427
+56.6s [log] [BSO shell] page /BSO/: list UULFwdVOry0oNF9WIe_3uCfz9Q: 200 videos
 56.7s [log] [BSO shell] page /BSO/: youtube error 150 on unoh43xpSoQ
-56.9s [log] [BSO shell] page /BSO/: youtube error 150 on BcdUZXQTcL0
+56.8s [log] [BSO shell] page /BSO/: youtube error 150 on BcdUZXQTcL0
 57.0s [log] [BSO shell] page /BSO/: youtube error 150 on 21scW9kBRoM
 57.1s [log] [BSO shell] page /BSO/: youtube error 150 on RVt5b184F7s
-57.3s [log] [BSO shell] page /BSO/: youtube error 150 on rauVNH3jBGU
-57.5s [log] [BSO shell] page /BSO/: youtube error 150 on 7spa7y_Eq3Y
-57.7s [log] [BSO shell] page /BSO/: youtube error 150 on 0pwyE6PykTQ
-57.8s [log] [BSO shell] page /BSO/: youtube error 150 on AfyEJwOrpow
-58.0s [log] [BSO shell] page /BSO/: youtube error 150 on WZFUGjYTZsk
-58.1s [log] [BSO shell] page /BSO/: youtube error 150 on VZ6gmdKs0uo
-58.2s [log] [BSO shell] page /BSO/: youtube error 150 on hCnVkt5QRv8
-58.2s [log] [BSO shell] page /BSO/: off the air: Matt's Off Road Recovery
-80.0s [log] ASK tv-ch2 {"page":"tv","started":true,"channel":2,"name":"Matt's Off Road Recovery","state":-1,"time":0,"title":"","adbreak":false,"notice":"Matt's Off Road Recovery is off the air"}
-80.6s shot 04-bsotv-ch2
-82.0s code 10009
-82.2s [log] TIZEN screensaver ON
-82.2s [log] TIZEN getAppsInfo
-90.0s [log] ASK home-again {"page":"home","host":"tizen","focus":0,"layer":null,"installed":6,"rail":["BSO TV","J R-dio","YouTube","Netflix","Prime Video","Pluto TV","Spotify","All apps"],"utils":["Make home","Add pictures","Samsung TV"],"blueprints":0,"apps":0,"pics":"","toast":null}
-91.0s key Down
-92.0s key Enter
+57.2s [log] [BSO shell] page /BSO/: youtube error 150 on rauVNH3jBGU
+57.3s [log] [BSO shell] page /BSO/: youtube error 150 on 7spa7y_Eq3Y
+57.4s [log] [BSO shell] page /BSO/: youtube error 150 on 0pwyE6PykTQ
+57.5s [log] [BSO shell] page /BSO/: youtube error 150 on AfyEJwOrpow
+57.6s [log] [BSO shell] page /BSO/: youtube error 150 on WZFUGjYTZsk
+57.7s [log] [BSO shell] page /BSO/: youtube error 150 on VZ6gmdKs0uo
+57.8s [log] [BSO shell] page /BSO/: youtube error 150 on hCnVkt5QRv8
+57.8s [log] [BSO shell] page /BSO/: off the air: Matt's Off Road Recovery
+80.2s [log] ASK tv-ch2 {"page":"tv","started":true,"channel":2,"name":"Matt's Off Road Recovery","state":-1,"time":0,"title":"","adbreak":false,"notice":"Matt's Off Road Recovery is off the air"}
+80.7s shot 04-bsotv-ch2
+82.1s code 10009
+82.3s [log] TIZEN screensaver ON
+82.3s [log] TIZEN getAppsInfo
+90.1s [log] ASK home-again {"page":"home","host":"tizen","focus":0,"layer":null,"installed":6,"rail":["BSO TV","J R-dio","YouTube","Netflix","Prime Video","Pluto TV","Spotify","All apps"],"utils":["Make home","Add pictures","Samsung TV"],"blueprints":0,"apps":0,"pics":"","toast":null}
+91.1s key Down
+92.1s key Enter
 92.2s [log] TIZEN screensaver OFF
-93.9s [log] [BSO shell] page /BSO/radio/: stations from 0 (asked 1500): got 1500 from de1
-94.9s [log] [BSO shell] page /BSO/radio/: stations from 1500 (asked 5000): got 5000 from de1
-95.7s [log] [BSO shell] page /BSO/radio/: stations from 6500 (asked 5000): got 5000 from de1
-96.6s [log] [BSO shell] page /BSO/radio/: stations from 11500 (asked 5000): got 5000 from de1
-97.5s [log] [BSO shell] page /BSO/radio/: stations from 16500 (asked 5000): got 5000 from de1
-98.3s [log] [BSO shell] page /BSO/radio/: stations from 21500 (asked 5000): got 5000 from de1
-99.2s [log] [BSO shell] page /BSO/radio/: stations from 26500 (asked 5000): got 5000 from de1
-100.1s [log] [BSO shell] page /BSO/radio/: stations from 31500 (asked 5000): got 5000 from de1
-101.0s [log] [BSO shell] page /BSO/radio/: stations from 36500 (asked 5000): got 5000 from de1
-102.0s [log] [BSO shell] page /BSO/radio/: stations from 41500 (asked 5000): got 5000 from de1
-103.0s [log] [BSO shell] page /BSO/radio/: stations from 46500 (asked 5000): got 5000 from de1
-103.9s [log] [BSO shell] page /BSO/radio/: stations from 51500 (asked 5000): got 5000 from de1
-104.8s [log] [BSO shell] page /BSO/radio/: stations from 56500 (asked 5000): got 5000 from de1
-105.4s [log] [BSO shell] page /BSO/radio/: stations from 61500 (asked 5000): got 1631 from de1
-106.0s [log] [BSO shell] page /BSO/radio/: stations from 63131 (asked 5000): got 0 from de1
-106.0s [log] [BSO shell] page /BSO/radio/: no new stations from 63131, stopping
-125.0s [log] ASK radio-loaded {"page":"radio","total":61925,"allDone":true,"placed":61528,"shown":61528,"spots":55880,"loading":false,"playing":false,"status":"PRESS OK TO PLAY","station":null,"tunedHere":0,"time":0,"overlay":null}
-125.7s shot 05-radio
-126.0s key Enter
-150.0s [log] ASK radio-playing {"page":"radio","total":61925,"allDone":true,"placed":61528,"shown":61528,"spots":55880,"loading":false,"playing":false,"status":"PRESS OK TO PLAY","station":null,"tunedHere":0,"time":0,"overlay":null}
-150.6s shot 06-radio-playing
-152.0s code 10009
-152.0s [log] TIZEN screensaver ON
-152.0s [log] TIZEN getAppsInfo
-160.0s [log] ASK home-end {"page":"home","host":"tizen","focus":0,"layer":null,"installed":6,"rail":["BSO TV","J R-dio","YouTube","Netflix","Prime Video","Pluto TV","Spotify","All apps"],"utils":["Make home","Add pictures","Samsung TV"],"blueprints":0,"apps":0,"pics":"","toast":null}
-160.6s shot 07-home-end
+94.0s [log] [BSO shell] page /BSO/radio/: stations from 0 (asked 1500): got 1500 from de2
+95.0s [log] [BSO shell] page /BSO/radio/: stations from 1500 (asked 5000): got 5000 from de2
+96.0s [log] [BSO shell] page /BSO/radio/: stations from 6500 (asked 5000): got 5000 from de2
+97.2s [log] [BSO shell] page /BSO/radio/: stations from 11500 (asked 5000): got 5000 from de2
+98.3s [log] [BSO shell] page /BSO/radio/: stations from 16500 (asked 5000): got 5000 from de2
+99.4s [log] [BSO shell] page /BSO/radio/: stations from 21500 (asked 5000): got 5000 from de2
+100.6s [log] [BSO shell] page /BSO/radio/: stations from 26500 (asked 5000): got 5000 from de2
+101.7s [log] [BSO shell] page /BSO/radio/: stations from 31500 (asked 5000): got 5000 from de2
+102.8s [log] [BSO shell] page /BSO/radio/: stations from 36500 (asked 5000): got 5000 from de2
+103.8s [log] [BSO shell] page /BSO/radio/: stations from 41500 (asked 5000): got 5000 from de2
+104.8s [log] [BSO shell] page /BSO/radio/: stations from 46500 (asked 5000): got 5000 from de2
+105.8s [log] [BSO shell] page /BSO/radio/: stations from 51500 (asked 5000): got 5000 from de2
+106.6s [log] [BSO shell] page /BSO/radio/: stations from 56500 (asked 5000): got 5000 from de2
+107.2s [log] [BSO shell] page /BSO/radio/: stations from 61500 (asked 5000): got 1632 from de2
+107.7s [log] [BSO shell] page /BSO/radio/: stations from 63132 (asked 5000): got 0 from de2
+107.7s [log] [BSO shell] page /BSO/radio/: no new stations from 63132, stopping
+125.2s [log] ASK radio-loaded {"page":"radio","total":61926,"allDone":true,"placed":61529,"shown":61529,"spots":55881,"loading":false,"playing":false,"status":"PRESS OK TO PLAY","station":null,"tunedHere":1,"time":0,"overlay":null}
+125.8s shot 05-radio
+126.1s key Enter
+150.2s [log] ASK radio-playing {"page":"radio","total":61926,"allDone":true,"placed":61529,"shown":61529,"spots":55881,"loading":false,"playing":true,"status":"ON AIR","station":"WREK Atlanta 91.1","tunedHere":1,"time":19,"overlay":null}
+150.8s shot 06-radio-playing
+152.1s code 10009
+152.2s [log] TIZEN screensaver ON
+152.2s [log] TIZEN getAppsInfo
+160.1s [log] ASK home-end {"page":"home","host":"tizen","focus":0,"layer":null,"installed":6,"rail":["BSO TV","J R-dio","YouTube","Netflix","Prime Video","Pluto TV","Spotify","All apps"],"utils":["Make home","Add pictures","Samsung TV"],"blueprints":0,"apps":0,"pics":"","toast":null}
+160.7s shot 07-home-end
