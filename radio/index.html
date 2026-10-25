@@ -377,6 +377,7 @@ function pagePath(offset, limit) {
   if (httpsOnly) p.set('is_https', 'true');
   return '/json/stations/search?' + p.toString();
 }
+const rlog = (m) => { try { console.log('[J R-dio] ' + m); } catch (e) { /* no console */ } if (window.bsoTizen && window.bsoTizen.on) window.bsoTizen.tell('log', { msg: m }); };
 async function fetchAll(quiet) {
   const out = [], seen = new Set();
   let offset = 0;
@@ -384,7 +385,8 @@ async function fetchAll(quiet) {
     const limit = page ? PAGE : FIRST;
     let list;
     try { list = await api(pagePath(offset, limit), 60000); }
-    catch (e) { if (!out.length && !quiet) throw e; break; }
+    catch (e) { rlog('stations from ' + offset + ' failed: ' + (e && e.message)); if (!out.length && !quiet) throw e; break; }
+    rlog('stations from ' + offset + ' (asked ' + limit + '): got ' + list.length + ' from ' + goodHost);
     for (const st of list) if (st && !seen.has(st.stationuuid) && usable(st)) { seen.add(st.stationuuid); out.push(slim(st)); }
     offset += list.length;
     if (!quiet) { all = out; place(); refresh(page === 0); setCount(); }

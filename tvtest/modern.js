@@ -17,5 +17,13 @@ const fs = require('fs');
     console.log(name + ':\n' + lines.slice(-6).join('\n'));
     await p.close();
   }
+  // J R-dio: how many stations the directory hands this machine
+  const p = await b.newPage(); const lines = [];
+  p.on('console', (m) => { if (/J R-dio/.test(m.text())) lines.push(m.text()); });
+  await p.goto('https://admanroddy.github.io/BSO/radio/'); await new Promise((r) => setTimeout(r, 60000));
+  const probe = await p.evaluate(() => window.bsoProbe && window.bsoProbe());
+  fs.mkdirSync('out/modern-radio', { recursive: true });
+  fs.writeFileSync('out/modern-radio/log.txt', lines.join('\n') + '\nPROBE ' + JSON.stringify(probe) + '\n');
+  console.log('radio:', lines.slice(-4).join(' | '), JSON.stringify(probe));
   await b.close();
 })();
