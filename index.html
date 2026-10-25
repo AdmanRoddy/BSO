@@ -560,7 +560,9 @@ function openGuide() { guideOpen = true; guideCursor = chIndex; els.guide.classL
 function closeGuide() { guideOpen = false; els.guide.classList.remove('open'); renderGuide(); }
 
 /* ---------- start (needs one press/tap so the browser allows sound) ---------- */
+const IN_APP = /BSOTV/i.test(navigator.userAgent);    // inside the Bent Steering Fire Stick app
 function goFullscreen() {
+  if (IN_APP) return;                                  // the app is already full screen
   const el = document.documentElement;
   if (document.fullscreenElement || document.webkitFullscreenElement) return;
   const req = el.requestFullscreen || el.webkitRequestFullscreen;
@@ -575,6 +577,10 @@ function start() {
   tune(chIndex);           // shows the tuning screen; plays now, or once the player is ready
 }
 els.tuneIn.addEventListener('click', start);
+// The app needs no "press OK": it tunes in once the logo has played.
+if (IN_APP) setTimeout(start, 2600);
+// The remote's Back button: close the guide first; otherwise the app goes back home.
+window.bsoBack = () => { if (guideOpen) { closeGuide(); return true; } return false; };
 
 /* ---------- remote / keyboard ---------- */
 let numBuf = '', numTimer = 0;

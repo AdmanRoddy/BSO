@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bent Steering TV — Home</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1530'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-style='italic' font-size='23' fill='%23FFFFFF'%3EBSO%3C/text%3E%3Crect x='12' y='46' width='40' height='5' rx='2.5' fill='%23E0262F'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,400;0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@600;700&display=swap">
+<style>
+:root{--bg:#070D1F;--rail:#0B1530;--ink:#FFFFFF;--muted:#A9B4D0;--dim:#7F8BAA;--red:#E0262F;--blue:#2563D9;--chip:#0F1B3D;--line:rgba(255,255,255,.10)}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);overflow:hidden;font-family:'Saira',system-ui,sans-serif;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+/* The screen is laid out at 1920×1080 like the design and scaled to fit the TV. */
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:var(--bg);display:flex}
+
+/* ---- rail ---- */
+.rail{width:640px;height:1080px;background:var(--rail);padding:64px 64px 56px;display:flex;flex-direction:column;gap:20px}
+.rail .logo{width:500px;margin-left:-12px}
+.items{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.item{height:76px;padding:0 30px;border:0;border-radius:38px;background:transparent;display:flex;align-items:center;gap:22px;font-size:34px;font-weight:700;font-style:italic;text-align:left;cursor:pointer;transition:background .15s ease,color .15s ease}
+.item svg{width:32px;height:32px;flex:0 0 auto}
+.item .tag{margin-left:auto;font-family:'Saira Condensed',sans-serif;font-style:normal;font-size:18px;font-weight:700;letter-spacing:.14em;padding:2px 10px;border-radius:8px;background:rgba(255,255,255,.12);color:var(--muted)}
+.item.focus{background:#fff;color:#0A1638}
+.item.focus .tag{background:#0A1638;color:#fff}
+.sep{margin-top:auto;height:1px;background:var(--line)}
+.utils{display:flex;flex-wrap:wrap;gap:12px}
+.util{height:56px;padding:0 24px 0 18px;border:0;border-radius:28px;background:rgba(255,255,255,.06);color:#C9D2E8;font-size:22px;font-weight:600;display:flex;align-items:center;gap:12px;cursor:pointer}
+.util svg{width:26px;height:26px}
+.util.alert{background:rgba(224,38,47,.18);color:#fff}
+.util.focus{background:#fff;color:#0A1638}
+
+/* ---- main ---- */
+main{flex:1;position:relative;padding:84px 96px 0 110px}
+.clock{display:flex;align-items:flex-start;gap:14px;line-height:.9}
+.clock .hm{font-size:230px;font-weight:800;font-style:italic;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.clock .ap{font-size:64px;font-weight:800;font-style:italic;color:var(--red);margin-top:30px}
+.date{margin:14px 0 0 8px;font-family:'Saira Condensed',sans-serif;font-size:36px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.blueprints{position:absolute;left:70px;top:470px;width:1110px;height:520px;opacity:.85;pointer-events:none}
+.blueprints img{position:absolute;left:0;top:0;width:100%;height:100%;object-fit:contain;object-position:left center;opacity:0;transition:opacity 1.4s ease}
+.blueprints img.on{opacity:1}
+.badges{position:absolute;right:96px;top:96px;display:flex;flex-direction:column;gap:14px}
+.badges img{width:96px;height:58px;object-fit:cover;border-radius:10px}
+.hint{position:absolute;right:96px;bottom:56px;font-family:'Saira Condensed',sans-serif;font-size:22px;font-weight:700;letter-spacing:.2em;color:var(--dim)}
+
+/* ---- overlays ---- */
+.layer{position:absolute;inset:0;z-index:10;background:var(--bg);display:none}
+.layer.show{display:block}
+.toast{position:absolute;left:50%;bottom:70px;transform:translateX(-50%);z-index:30;padding:16px 30px;border-radius:16px;background:var(--chip);box-shadow:inset 0 0 0 1px var(--line);font-size:28px;font-weight:600;display:none;white-space:nowrap}
+.toast.show{display:block}
+
+/* splash */
+@keyframes bso-in{0%{opacity:0;transform:translateX(-170px) scale(.9)}10%{opacity:0;transform:translateX(-170px) scale(.9)}24%{opacity:1;transform:translateX(16px) scale(1.025)}32%{opacity:1;transform:none}84%{opacity:1;transform:none}100%{opacity:0;transform:scale(1.04)}}
+@keyframes bso-streak{0%,12%{opacity:0;transform:translateX(-420px)}24%{opacity:.95;transform:translateX(0)}40%,100%{opacity:0;transform:translateX(60px)}}
+@keyframes bso-load{0%,30%{width:0}84%,100%{width:100%}}
+@keyframes bso-fade{0%,30%{opacity:0}40%,84%{opacity:1}100%{opacity:0}}
+#splash .streaks{position:absolute;left:210px;top:452px;display:flex;flex-direction:column;gap:34px}
+#splash .streaks i{display:block;height:7px;border-radius:4px;animation:bso-streak 4.5s cubic-bezier(.2,.8,.2,1) both}
+#splash .streaks i:nth-child(1){width:300px;background:var(--red)}
+#splash .streaks i:nth-child(2){width:220px;background:#fff;margin-left:60px;animation-delay:.08s}
+#splash .streaks i:nth-child(3){width:270px;background:var(--blue);margin-left:20px;animation-delay:.16s}
+#splash .mark{position:absolute;left:380px;top:300px;width:1160px;animation:bso-in 4.5s cubic-bezier(.2,.8,.2,1) both}
+#splash .load{position:absolute;left:750px;top:880px;width:420px;display:flex;flex-direction:column;align-items:center;gap:18px;animation:bso-fade 4.5s cubic-bezier(.2,.8,.2,1) both}
+#splash .bar{width:420px;height:6px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+#splash .bar i{display:block;height:6px;background:var(--red);animation:bso-load 4.5s linear both}
+#splash p{margin:0;font-family:'Saira Condensed',sans-serif;font-size:22px;font-weight:700;letter-spacing:.32em;color:var(--muted)}
+
+/* idle */
+@keyframes bso-drift{0%,100%{transform:translate(0,0)}25%{transform:translate(18px,-10px)}50%{transform:translate(0,-18px)}75%{transform:translate(-18px,-8px)}}
+#idle{background:#05091A}
+#idle .t{position:absolute;left:96px;top:72px;display:flex;flex-direction:column;gap:6px}
+#idle .t b{font-size:132px;font-weight:800;font-style:italic;line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+#idle .t span{font-family:'Saira Condensed',sans-serif;font-size:30px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+#idle .blueprints{left:140px;top:290px;width:1640px;height:590px;opacity:.9;animation:bso-drift 90s ease-in-out infinite}
+#idle .blueprints img{object-position:center;transition:opacity 2s ease}
+#idle .press{position:absolute;left:0;right:0;bottom:74px;margin:0;text-align:center;font-family:'Saira Condensed',sans-serif;font-size:22px;font-weight:700;letter-spacing:.3em;color:var(--dim)}
+#idle .mini{position:absolute;right:90px;bottom:56px;width:260px;opacity:.85}
+#idle .nobp{position:absolute;left:560px;top:420px;width:800px;opacity:.25;animation:bso-drift 90s ease-in-out infinite}
+
+/* all apps */
+#apps{padding:72px 96px}
+#apps h1,#setup h1{margin:0 0 36px;font-size:56px;font-weight:900;font-style:italic}
+.grid{display:grid;grid-template-columns:repeat(5,320px);gap:28px 30px}
+.app{width:320px;height:180px;border:0;border-radius:16px;background:var(--chip) center/cover no-repeat;box-shadow:inset 0 0 0 1px var(--line);display:flex;align-items:flex-end;padding:14px 18px;font-size:24px;font-weight:700;text-align:left;cursor:pointer;transition:transform .15s ease,box-shadow .15s ease}
+.app.has-art span{display:none}
+.app.focus{transform:scale(1.06);box-shadow:0 0 0 5px #fff,0 20px 40px rgba(0,0,0,.5)}
+#apps .grid-wrap{height:860px;overflow:hidden}
+
+/* setup */
+#setup{padding:96px 140px}
+#setup p{max-width:1400px;font-size:32px;line-height:1.45;color:#C9D2E8;margin:0 0 22px}
+#setup ol{font-size:32px;line-height:1.6;color:#C9D2E8;margin:0 0 40px;padding-left:48px}
+#setup b{color:#fff}
+#setup .go{height:80px;padding:0 44px;border:0;border-radius:40px;background:#fff;color:#0A1638;font-size:32px;font-weight:800;cursor:pointer}
+#setup .back{margin-left:24px;height:80px;padding:0 40px;border:0;border-radius:40px;background:rgba(255,255,255,.08);font-size:30px;font-weight:700;cursor:pointer}
+#setup .go.focus,#setup .back.focus{outline:5px solid var(--red);outline-offset:6px}
+</style>
+</head>
+<body>
+<div id="stage">
+  <nav class="rail" aria-label="Apps">
+    <img class="logo" src="bso-logo.webp" alt="Bent Steering Offroad">
+    <div class="items" id="items"></div>
+    <div class="sep"></div>
+    <div class="utils" id="utils"></div>
+  </nav>
+  <main>
+    <div class="clock"><span class="hm" id="hm">12:00</span><span class="ap" id="ap">PM</span></div>
+    <p class="date" id="date"></p>
+    <div class="blueprints" id="bp" aria-hidden="true"><img alt=""><img alt=""></div>
+    <div class="badges" id="badges"></div>
+    <div class="hint">▲ ▼ PICK  ·  OK OPEN</div>
+  </main>
+
+  <section class="layer" id="apps" aria-label="All apps">
+    <h1>All apps</h1>
+    <div class="grid-wrap"><div class="grid" id="grid"></div></div>
+  </section>
+
+  <section class="layer" id="setup" aria-label="Home screen setup">
+    <h1>Make Bent Steering your home screen</h1>
+    <p>Fire TV won't let another app take over its Home button directly, so Bent Steering TV watches for Amazon's home screen and swaps in this one.</p>
+    <ol>
+      <li>Press <b>Open settings</b> below.</li>
+      <li>Pick <b>Bent Steering TV</b> and turn it <b>On</b>.</li>
+      <li>Press Back to come home. From then on, Home and power-on bring you here.</li>
+    </ol>
+    <button class="go" id="setup-go">Open settings</button><button class="back" id="setup-back">Not now</button>
+  </section>
+
+  <section class="layer" id="idle" aria-label="Screensaver">
+    <div class="t"><b id="idle-time"></b><span id="idle-date"></span></div>
+    <div class="blueprints" id="idle-bp" aria-hidden="true"><img alt=""><img alt=""></div>
+    <img class="nobp" id="idle-logo" src="bso-logo.webp" alt="" hidden>
+    <p class="press">PRESS ANY BUTTON</p>
+    <img class="mini" src="bso-logo.webp" alt="Bent Steering Offroad">
+  </section>
+
+  <section class="layer show" id="splash" aria-label="Starting">
+    <div class="streaks" aria-hidden="true"><i></i><i></i><i></i></div>
+    <img class="mark" src="bso-logo.webp" alt="Bent Steering Offroad">
+    <div class="load"><div class="bar"><i></i></div><p>FIRING UP</p></div>
+  </section>
+
+  <div class="toast" id="toast" role="status"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+const app = window.BSOApp || null;                       // the Fire Stick app's bridge; absent in a browser
+const SITE = 'https://admanroddy.github.io/BSO/';
+const IDLE_MS = 5 * 60000, SLIDE_MS = 10000, IDLE_SLIDE_MS = 60000;
+
+/* ---------- fit 1920×1080 to the screen ---------- */
+const stage = $('stage');
+function fit() {
+  const s = Math.min(innerWidth / 1920, innerHeight / 1080);
+  stage.style.transform = `translate(${(innerWidth - 1920 * s) / 2}px, ${(innerHeight - 1080 * s) / 2}px) scale(${s})`;
+}
+addEventListener('resize', fit); fit();
+
+/* ---------- icons (stroke paths, 24×24) ---------- */
+const ICON = {
+  tv: 'M3 6h18v12H3z M8 21h8 M12 18v3',
+  radio: 'M10 12a2 2 0 1 0 4 0a2 2 0 1 0-4 0 M8.5 8.5a5 5 0 0 0 0 7 M15.5 8.5a5 5 0 0 1 0 7 M5.6 5.6a9 9 0 0 0 0 12.8 M18.4 5.6a9 9 0 0 1 0 12.8',
+  youtube: 'M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z M10 9l5 3-5 3z',
+  netflix: 'M4 4h16v16H4z M8 4v16 M16 4v16 M4 9h4 M4 15h4 M16 9h4 M16 15h4',
+  prime: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0 M10 8.5l5.5 3.5-5.5 3.5z',
+  pluto: 'M3 7h18v12H3z M8 3l4 4 4-4',
+  spotify: 'M9 18V5l11-2v13 M3 18a3 3 0 1 0 6 0a3 3 0 1 0-6 0 M14 16a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
+  grid: 'M4 4h6v6H4z M14 4h6v6h-6z M4 14h6v6H4z M14 14h6v6h-6z',
+  settings: 'M4 7h9 M17 7h3 M13 7a2 2 0 1 0 4 0a2 2 0 1 0-4 0 M4 17h3 M11 17h9 M7 17a2 2 0 1 0 4 0a2 2 0 1 0-4 0',
+  home: 'M3 11l9-7 9 7 M5 10v10h14V10',
+  update: 'M12 3v12 M7 10l5 5 5-5 M4 20h16',
+  amazon: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0 M8 12h8',
+};
+const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${p}"></path></svg>`;
+
+/* ---------- what's on the rail ---------- */
+const RAIL = [
+  { name: 'BSO TV', icon: 'tv', open: () => app ? app.openTv(SITE) : (location.href = SITE) },
+  { name: 'J R-dio', icon: 'radio', open: () => app ? app.openRadio(SITE + 'radio/') : (location.href = SITE + 'radio/') },
+  { name: 'YouTube', icon: 'youtube', pkgs: ['com.amazon.firetv.youtube', 'com.google.android.youtube.tv'], label: 'youtube' },
+  { name: 'Netflix', icon: 'netflix', pkgs: ['com.netflix.ninja'], label: 'netflix' },
+  { name: 'Prime Video', icon: 'prime', pkgs: ['com.amazon.avod', 'com.amazon.firebat', 'com.amazon.avod.thirdpartyclient'], label: 'prime video' },
+  { name: 'Pluto TV', icon: 'pluto', pkgs: ['tv.pluto.android'], label: 'pluto' },
+  { name: 'Spotify', icon: 'spotify', pkgs: ['com.spotify.tv.android', 'com.spotify.music'], label: 'spotify' },
+  { name: 'All apps', icon: 'grid', open: () => openApps() },
+];
+let installed = [];        // [{pkg, label}] from the app
+function loadInstalled() { try { installed = app ? JSON.parse(app.apps()) : []; } catch (e) { installed = []; } }
+function findPkg(it) {
+  for (const p of it.pkgs || []) if (installed.some((a) => a.pkg === p)) return p;
+  const hit = it.label && installed.find((a) => a.label.toLowerCase().includes(it.label));
+  return hit ? hit.pkg : null;
+}
+function openItem(it) {
+  if (it.open) { it.open(); return; }
+  if (!app) { toast(it.name + ' opens on the Fire Stick'); return; }
+  const pkg = findPkg(it);
+  if (pkg && app.launch(pkg)) return;
+  toast(it.name + " isn't installed — opening the Appstore");
+  app.openStore((it.pkgs || [])[0] || '');
+}
+
+/* ---------- utility buttons (bottom of the rail) ---------- */
+let update = null;
+function utilList() {
+  const u = [{ name: 'Settings', icon: 'settings', open: () => app ? app.openSettings() : toast('Fire TV settings open on the Fire Stick') }];
+  if (app && !app.homeOverride()) u.unshift({ name: 'Make home', icon: 'home', alert: true, open: () => openSetup() });
+  if (update) u.unshift({ name: 'Update ' + update.versionName, icon: 'update', alert: true, open: () => { toast('Downloading the update…'); app.update(update.apk); } });
+  if (app) u.push({ name: 'Fire TV home', icon: 'amazon', open: () => app.fireHome() });
+  return u;
+}
+
+/* ---------- focus / rendering ---------- */
+let focus = 0, utils = [];
+function render() {
+  const items = $('items');
+  if (!items.children.length) RAIL.forEach((it, i) => {
+    const b = document.createElement('button');
+    b.className = 'item'; b.type = 'button';
+    b.innerHTML = svg(ICON[it.icon]) + '<span></span>';
+    b.querySelector('span').textContent = it.name;
+    b.addEventListener('click', () => { focus = i; render(); openItem(it); });
+    items.appendChild(b);
+  });
+  utils = utilList();
+  const ub = $('utils'); ub.innerHTML = '';
+  utils.forEach((u, j) => {
+    const b = document.createElement('button');
+    b.className = 'util' + (u.alert ? ' alert' : ''); b.type = 'button';
+    b.innerHTML = svg(ICON[u.icon]) + '<span></span>';
+    b.querySelector('span').textContent = u.name;
+    b.addEventListener('click', () => { focus = RAIL.length + j; render(); u.open(); });
+    ub.appendChild(b);
+  });
+  focus = Math.min(focus, RAIL.length + utils.length - 1);
+  [...items.children].forEach((b, i) => b.classList.toggle('focus', i === focus));
+  [...ub.children].forEach((b, j) => b.classList.toggle('focus', RAIL.length + j === focus));
+}
+function activate() {
+  if (focus < RAIL.length) openItem(RAIL[focus]);
+  else utils[focus - RAIL.length].open();
+}
+
+/* ---------- clock ---------- */
+function tick() {
+  const d = new Date();
+  let h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12;
+  const m = String(d.getMinutes()).padStart(2, '0');
+  $('hm').textContent = h + ':' + m; $('ap').textContent = ap;
+  const date = d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  $('date').textContent = date;
+  $('idle-time').textContent = h + ':' + m + ' ' + ap; $('idle-date').textContent = date;
+}
+setInterval(tick, 5000); tick();
+
+/* ---------- blueprints + badges (private files on the Fire Stick, never on the website) ---------- */
+let bps = [], bag = [], lastBp = '';
+function loadPrivate() {
+  const list = (kind) => { try { return app ? JSON.parse(app.files(kind)) : []; } catch (e) { return []; } };
+  bps = list('blueprints').map((n) => 'https://bso.local/blueprints/' + encodeURIComponent(n));
+  const badges = list('badges').slice(0, 3);
+  $('badges').innerHTML = '';
+  for (const n of badges) { const im = document.createElement('img'); im.alt = ''; im.src = 'https://bso.local/badges/' + encodeURIComponent(n); $('badges').appendChild(im); }
+  $('idle-logo').hidden = !!bps.length;
+}
+function nextBp() {
+  if (!bps.length) return '';
+  if (!bag.length) {
+    bag = bps.slice();
+    for (let i = bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [bag[i], bag[j]] = [bag[j], bag[i]]; }
+    if (bag.length > 1 && bag[bag.length - 1] === lastBp) [bag[0], bag[bag.length - 1]] = [bag[bag.length - 1], bag[0]];
+  }
+  return (lastBp = bag.pop());
+}
+function slide(boxId) {
+  const url = nextBp(); if (!url) return;
+  const imgs = $(boxId).querySelectorAll('img');
+  const back = imgs[0].classList.contains('on') ? imgs[1] : imgs[0], front = back === imgs[0] ? imgs[1] : imgs[0];
+  const pre = new Image();
+  pre.onload = pre.onerror = () => { back.src = url; back.classList.add('on'); front.classList.remove('on'); };
+  pre.src = url;
+}
+let slideTimer = 0;
+function runSlides() {
+  clearInterval(slideTimer);
+  const idle = $('idle').classList.contains('show');
+  slide(idle ? 'idle-bp' : 'bp');
+  slideTimer = setInterval(() => slide($('idle').classList.contains('show') ? 'idle-bp' : 'bp'), idle ? IDLE_SLIDE_MS : SLIDE_MS);
+}
+
+/* ---------- layers ---------- */
+let layer = null;           // 'apps' | 'setup' | null
+function show(id, on) { $(id).classList.toggle('show', on); }
+let toastT = 0;
+function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add('show'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('show'), 2800); }
+
+// all apps
+let appFocus = 0, appList = [];
+function openApps() {
+  loadInstalled();
+  appList = installed.filter((a) => a.pkg !== 'com.bentsteering.tv').sort((a, b) => a.label.localeCompare(b.label));
+  if (!app) appList = RAIL.slice(2, 7).map((it) => ({ pkg: '', label: it.name }));
+  const g = $('grid'); g.innerHTML = '';
+  appList.forEach((a, i) => {
+    const b = document.createElement('button');
+    b.className = 'app'; b.type = 'button';
+    b.innerHTML = '<span></span>'; b.querySelector('span').textContent = a.label;
+    if (app && a.pkg) { const art = app.banner(a.pkg); if (art) { b.style.backgroundImage = 'url(' + art + ')'; b.classList.add('has-art'); } }
+    b.addEventListener('click', () => { appFocus = i; launchApp(a); });
+    g.appendChild(b);
+  });
+  appFocus = 0; layer = 'apps'; show('apps', true); renderApps();
+}
+function renderApps() {
+  const kids = [...$('grid').children];
+  kids.forEach((b, i) => b.classList.toggle('focus', i === appFocus));
+  const row = Math.floor(appFocus / 5);
+  $('grid').style.transform = `translateY(${-Math.max(0, row - 3) * 208}px)`;
+}
+function launchApp(a) { if (app && a.pkg) app.launch(a.pkg); else toast(a.label + ' opens on the Fire Stick'); }
+
+// setup
+let setupFocus = 0;
+function openSetup() { layer = 'setup'; setupFocus = 0; show('setup', true); renderSetup(); }
+function renderSetup() { $('setup-go').classList.toggle('focus', setupFocus === 0); $('setup-back').classList.toggle('focus', setupFocus === 1); }
+$('setup-go').addEventListener('click', () => app ? app.openAccessibility() : toast('This opens Fire TV settings on the Fire Stick'));
+$('setup-back').addEventListener('click', () => closeLayer());
+
+function closeLayer() { if (layer) show(layer, false); layer = null; render(); }
+
+/* ---------- splash + idle ---------- */
+let splashT = 0;
+function splash() {
+  const s = $('splash');
+  s.classList.remove('show'); void s.offsetWidth; s.classList.add('show');    // restart the animation
+  clearTimeout(splashT); splashT = setTimeout(() => s.classList.remove('show'), 4600);
+}
+let idleT = 0;
+function poke() {
+  clearTimeout(idleT);
+  idleT = setTimeout(() => { if (!layer) { show('idle', true); runSlides(); } }, IDLE_MS);
+}
+function wake() { if ($('idle').classList.contains('show')) { show('idle', false); runSlides(); return true; } return false; }
+
+/* ---------- remote ---------- */
+addEventListener('keydown', (e) => {
+  poke();
+  if (wake()) { e.preventDefault(); return; }                 // any button just wakes the screen
+  if ($('splash').classList.contains('show')) { $('splash').classList.remove('show'); }
+  const k = e.key;
+  const back = k === 'Escape' || k === 'Backspace' || k === 'GoBack' || k === 'BrowserBack';
+  if (layer === 'apps') {
+    const n = appList.length;
+    if (k === 'ArrowRight') appFocus = Math.min(n - 1, appFocus + 1);
+    else if (k === 'ArrowLeft') appFocus = Math.max(0, appFocus - 1);
+    else if (k === 'ArrowDown') appFocus = Math.min(n - 1, appFocus + 5);
+    else if (k === 'ArrowUp') { if (appFocus < 5) { closeLayer(); e.preventDefault(); return; } appFocus -= 5; }
+    else if (k === 'Enter' || k === ' ') { if (appList[appFocus]) launchApp(appList[appFocus]); }
+    else if (back) { closeLayer(); }
+    else return;
+    e.preventDefault(); if (layer === 'apps') renderApps(); return;
+  }
+  if (layer === 'setup') {
+    if (k === 'ArrowLeft' || k === 'ArrowUp') setupFocus = 0;
+    else if (k === 'ArrowRight' || k === 'ArrowDown') setupFocus = 1;
+    else if (k === 'Enter' || k === ' ') { (setupFocus ? $('setup-back') : $('setup-go')).click(); }
+    else if (back) closeLayer();
+    else return;
+    e.preventDefault(); if (layer === 'setup') renderSetup(); return;
+  }
+  const total = RAIL.length + utils.length;
+  if (k === 'ArrowDown') focus = Math.min(total - 1, focus < RAIL.length ? focus + 1 : focus);
+  else if (k === 'ArrowUp') focus = focus >= RAIL.length ? RAIL.length - 1 : Math.max(0, focus - 1);
+  else if (k === 'ArrowRight') { if (focus >= RAIL.length) focus = Math.min(total - 1, focus + 1); }
+  else if (k === 'ArrowLeft') { if (focus > RAIL.length) focus -= 1; }
+  else if (k === 'Enter' || k === ' ') { activate(); }
+  else return;
+  e.preventDefault(); render();
+});
+addEventListener('pointerdown', () => { poke(); wake(); });
+
+/* ---------- hooks the Fire Stick app calls ---------- */
+window.bsoBack = () => { if (wake()) return true; if (layer) { closeLayer(); return true; } return false; };
+window.bsoSplash = () => { splash(); poke(); };
+window.bsoResume = () => { loadInstalled(); loadPrivate(); render(); poke(); runSlides(); checkUpdate(); };
+
+/* ---------- app updates ---------- */
+async function checkUpdate() {
+  if (!app) return;
+  try {
+    const r = await fetch(SITE + 'app/version.json?t=' + Date.now(), { cache: 'no-store' });
+    const v = await r.json();
+    update = v.versionCode > app.versionCode() ? v : null;
+    render();
+  } catch (e) { /* offline: try again later */ }
+}
+setInterval(checkUpdate, 6 * 3600000);
+
+/* ---------- go ---------- */
+const params = new URLSearchParams(location.search);
+if (params.has('nosplash')) $('splash').classList.remove('show'); else splash();
+loadInstalled(); loadPrivate(); render(); poke(); runSlides(); checkUpdate();
+})();
+</script>
+</body>
+</html>

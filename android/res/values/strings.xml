@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Bent Steering TV</string>
+    <string name="home_watcher_desc">Brings up the Bent Steering home screen when you press Home or turn the TV on, in place of Amazon\'s home screen.</string>
+</resources>

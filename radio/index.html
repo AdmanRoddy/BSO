@@ -773,6 +773,12 @@ resize();
 renderCats();
 setCount();
 boot();
+// Inside the Fire Stick app, the remote's Back button closes the category bar or a message first.
+window.bsoBack = () => {
+  if (!els.overlay.hidden) { hideOverlay(); return true; }
+  if (focusCats) { setFocusCats(false); return true; }
+  return false;
+};
 })();
 </script>
 </body>
