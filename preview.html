@@ -246,18 +246,36 @@ window.onYouTubeIframeAPIReady = () => {
   });
 };
 // YouTube draws its own title bar, "More videos" strip and logo along the top and bottom edges of its
-// frame. The frame is made taller than the screen (and no wider than 16:9) so those edges sit just
-// off-screen while the picture itself stays fully in view.
+// frame. The frame is made exactly as wide as the picture and taller than the screen, so those edges
+// sit just off-screen while the picture itself stays fully in view. That needs the video's shape
+// (widescreen vs. old 4:3 TV), which YouTube's public oEmbed lookup gives.
+let aspect = 16 / 9;
+const aspects = new Map(store.get('ar', []));
 function fitStage() {
   const f = $('player');
   if (!f) return;
   const W = window.innerWidth, H = window.innerHeight;
   const pad = Math.round(Math.max(90, H * 0.14));
-  const w = Math.min(W, Math.round(H * 16 / 9));
+  const w = Math.min(W, Math.round(H * aspect));          // picture width once fitted to the screen
   Object.assign(f.style, { left: Math.round((W - w) / 2) + 'px', top: -pad + 'px', right: 'auto', bottom: 'auto', width: w + 'px', height: (H + 2 * pad) + 'px' });
 }
 window.addEventListener('resize', fitStage);
 fitStage();
+function setAspect(ar) { if (ar > 0.3 && ar < 4 && Math.abs(ar - aspect) > 0.01) { aspect = ar; fitStage(); } }
+async function shapeFor(vid) {
+  if (aspects.has(vid)) { setAspect(aspects.get(vid)); return; }
+  setAspect(16 / 9);
+  try {
+    const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + vid));
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j.width || !j.height) return;
+    const ar = j.width / j.height;
+    aspects.set(vid, ar);
+    store.set('ar', [...aspects].slice(-600));
+    if (prog && prog.vid === vid) setAspect(ar);
+  } catch (e) { /* keep widescreen */ }
+}
 // YouTube turns on its auto-generated captions by itself; keep them off.
 function captionsOff() {
   if (!player) return;
@@ -416,6 +434,7 @@ function play(ch, ids, live) {
   const vid = pickVideo(ch, ids, prog.seq);
   prog.vid = vid; prog.seeked = false; prog.live = live; prog.pinned = false;
   adBreak(false, true);
+  shapeFor(vid);
   player.loadVideoById({ videoId: vid });
   if (muted) player.mute(); else player.unMute();
 }
