@@ -67,6 +67,10 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
 .ch-btns button{width:4rem;height:4rem;border:0;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;cursor:pointer}
 .ch-btns button.wide{width:auto;padding:0 1.4rem;border-radius:2rem;font-family:'Saira Condensed',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:.16em}
 .ch-btns svg{width:1.6rem;height:1.6rem}
+.ch-btns button.on{background:#fff;color:#0A1638}
+.row.setting{margin-top:1rem;box-shadow:inset 0 1px 0 var(--line);border-radius:0 0 .9rem .9rem}
+.row .state{flex:0 0 auto;padding:.1rem .55rem;border-radius:.35rem;background:rgba(255,255,255,.14);font-family:'Saira Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.16em}
+.row .state.on{background:var(--blue);color:#fff}
 .hint{position:fixed;right:3.5rem;bottom:calc(3rem + 11.5rem);z-index:5;font-family:'Saira Condensed',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:.14em;color:var(--muted);
   display:flex;gap:.75rem;align-items:center;transition:opacity .35s ease;text-shadow:0 1px 6px rgba(0,0,0,.8)}
 .hint .key{padding:.12rem .6rem;border-radius:.4rem;box-shadow:inset 0 0 0 .13rem rgba(255,255,255,.35);color:#fff}
@@ -122,7 +126,8 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
   .banner{left:.75rem;right:.75rem;bottom:calc(.75rem + env(safe-area-inset-bottom));flex-wrap:wrap}
   .ch-num{min-width:6.5rem;padding:1rem} .ch-num b{font-size:2.6rem} .ch-num small{font-size:.9rem}
   .ch-info{padding:1rem 1.1rem} .ch-name{font-size:1.5rem} .ch-title{font-size:1.05rem}
-  .ch-btns{width:100%;justify-content:space-between;padding:0 1rem 1rem}
+  .ch-btns{width:100%;justify-content:space-between;gap:.4rem;padding:0 1rem 1rem}
+  .ch-btns button.wide{padding:0 .85rem}
   .hint{display:none}
   .ab-title{font-size:2.6rem} .ab-sub{font-size:1.15rem} .ab-ch{font-size:.95rem} .ab-note{font-size:.85rem;bottom:1.5rem}
 }
@@ -155,6 +160,7 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
     <button id="btn-down" aria-label="Channel down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
     <button id="btn-up" aria-label="Channel up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
     <button id="btn-restart" class="wide" aria-label="Restart this video from the beginning">RESTART</button>
+    <button id="btn-cc" class="wide" aria-pressed="false" aria-label="Captions">CC</button>
     <button id="btn-guide" class="wide">GUIDE</button>
     <button id="btn-sound" class="wide">SOUND ON</button>
   </div>
@@ -222,6 +228,8 @@ const playlists = new Map();            // channel id -> [video ids]
 const bad = new Set(store.get('bad', []));
 try { Object.keys(localStorage).forEach((k) => { if (k.startsWith('bsotv:pl:')) localStorage.removeItem(k); }); } catch (e) { /* old all-uploads cache */ }
 let cueWaiter = null, guideOpen = false, guideCursor = 0, muted = false;
+let ccOn = !!store.get('cc', false);    // captions: off unless turned on with the CC button
+let resume = null;                      // what was playing when the player was rebuilt for captions
 let watchdog = 0, ytBlocked = false;
 
 /* ---------- schedule ---------- */
@@ -237,14 +245,14 @@ function liveOffset(dur) {
 }
 
 /* ---------- YouTube player ---------- */
-window.onYouTubeIframeAPIReady = () => {
-  apiReady = true;
-  player = new YT.Player('player', {
-    width: '100%', height: '100%',
-    playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, rel: 0, playsinline: 1, origin: location.origin },
-    events: { onReady, onStateChange, onError },
-  });
-};
+// YouTube only honours "captions on" when its player is built (cc_load_policy), so the CC button
+// rebuilds the player and picks the same video back up where it was.
+function makePlayer() {
+  const vars = { autoplay: 0, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, rel: 0, playsinline: 1, origin: location.origin };
+  if (ccOn) Object.assign(vars, { cc_load_policy: 1, cc_lang_pref: 'en' });
+  player = new YT.Player('player', { width: '100%', height: '100%', playerVars: vars, events: { onReady, onStateChange, onError } });
+}
+window.onYouTubeIframeAPIReady = () => { apiReady = true; makePlayer(); };
 // YouTube draws its own title bar, "More videos" strip and logo along the top and bottom edges of its
 // frame. The frame is made exactly as wide as the picture and taller than the screen, so those edges
 // sit just off-screen while the picture itself stays fully in view. That needs the video's shape
@@ -299,6 +307,15 @@ function onReady() {
     player.addEventListener('onAdEnd', () => adBreak(false));
     player.addEventListener('onAdStateChange', (e) => { if (e && e.data === -1) adBreak(false); else if (e && (e.data === 1 || e.data === 3)) adBreak(true); });
   } catch (err) { /* no ad events: nothing to cover */ }
+  if (resume && started && resume.ch === chIndex) {
+    const r = resume; resume = null;
+    prog = { seq: r.seq, tries: 0, token: ++token, live: false, vid: r.vid, seeked: false, pinned: r.pinned };
+    shapeFor(r.vid);
+    player.loadVideoById({ videoId: r.vid, startSeconds: r.t });
+    if (muted) player.mute(); else player.unMute();
+    return;
+  }
+  resume = null;
   if (started) tune(chIndex, true);
 }
 function onStateChange(e) {
@@ -312,10 +329,12 @@ function onStateChange(e) {
       const data = player.getVideoData ? player.getVideoData() : {};
       if (d < MIN_LEN || (data && data.isLive)) { markBad(prog.vid); return next(prog.live); }   // tuning screen stays up while skipping
       prog.seeked = true;
-      captionsOff();
       const my = prog.token, vid = prog.vid;
-      setTimeout(() => { if (prog && prog.vid === vid) captionsOff(); }, 1500);
-      setTimeout(() => { if (prog && prog.vid === vid) captionsOff(); }, 4000);
+      if (!ccOn) {
+        captionsOff();
+        setTimeout(() => { if (prog && prog.vid === vid && !ccOn) captionsOff(); }, 1500);
+        setTimeout(() => { if (prog && prog.vid === vid && !ccOn) captionsOff(); }, 4000);
+      }
       if (prog.live) player.seekTo(liveOffset(d), true);
       showInfo();
       prog.revealAt = Date.now() + REVEAL_DELAY;
@@ -507,6 +526,12 @@ function renderGuide() {
       b.addEventListener('click', () => { closeGuide(); start(); tune(i); });
       els.list.appendChild(b);
     });
+    const cc = document.createElement('button');
+    cc.className = 'row setting'; cc.type = 'button';
+    cc.innerHTML = '<span class="n">CC</span><span class="t">Captions</span><span class="state"></span>';
+    cc.addEventListener('click', toggleCaptions);
+    els.list.appendChild(cc);
+    setCcLabels();
   }
   [...els.list.children].forEach((b, i) => {
     b.classList.toggle('cursor', guideOpen && i === guideCursor);
@@ -546,6 +571,26 @@ function togglePause() {
   else { player.playVideo(); setBanner(CHANNELS[chIndex], els.title.textContent, playingBadge()); }
   showBanner();
 }
+function setCcLabels() {
+  const b = $('btn-cc');
+  b.classList.toggle('on', ccOn); b.setAttribute('aria-pressed', String(ccOn));
+  const st = els.list.querySelector('.setting .state');
+  if (st) { st.textContent = ccOn ? 'ON' : 'OFF'; st.classList.toggle('on', ccOn); }
+}
+function toggleCaptions() {
+  ccOn = !ccOn; store.set('cc', ccOn); setCcLabels(); showBanner();
+  if (!player || !apiReady) return;
+  if (prog && prog.seeked && prog.token === token && player.getCurrentTime) {
+    resume = { ch: chIndex, vid: prog.vid, t: Math.max(0, player.getCurrentTime() - 1), seq: prog.seq, pinned: !!prog.pinned };
+  }
+  token++;                                   // ignore anything the old player still reports
+  try { player.destroy(); } catch (e) { /* already gone */ }
+  player = null; adBreak(false, true);
+  if (!$('player')) { const d = document.createElement('div'); d.id = 'player'; $('stage').appendChild(d); }
+  fitStage();
+  if (started) { els.stat.classList.add('on'); els.tuning.textContent = ccOn ? 'CAPTIONS ON' : 'CAPTIONS OFF'; }
+  makePlayer();                              // onReady picks the show back up
+}
 function toggleSound() {
   if (!player) return;
   muted = !muted;
@@ -561,7 +606,8 @@ window.addEventListener('keydown', (e) => {
   }
   if (guideOpen) {
     if (k === 'ArrowUp') guideCursor = Math.max(0, guideCursor - 1);
-    else if (k === 'ArrowDown') guideCursor = Math.min(CHANNELS.length - 1, guideCursor + 1);
+    else if (k === 'ArrowDown') guideCursor = Math.min(CHANNELS.length, guideCursor + 1);     // last row: captions
+    else if ((k === 'Enter' || k === ' ') && guideCursor === CHANNELS.length) toggleCaptions();
     else if (k === 'Enter' || k === ' ') { closeGuide(); tune(guideCursor); }
     else if (k === 'ArrowLeft' || k === 'Escape' || k === 'Backspace' || k === 'GoBack' || code === 4) closeGuide();
     else return;
@@ -577,6 +623,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'MediaFastForward' || code === 228) { player.seekTo(player.getCurrentTime() + 30, true); showBanner(); }
   else if (k === 'MediaRewind' || code === 227) { player.seekTo(Math.max(0, player.getCurrentTime() - 30), true); showBanner(); }
   else if (k === 'm') toggleSound();
+  else if (k === 'c') toggleCaptions();
   else if (/^[0-9]$/.test(k)) typeNumber(k);
   else return;
   e.preventDefault();
@@ -600,6 +647,7 @@ $('btn-down').addEventListener('click', () => tune(chIndex - 1));
 $('btn-restart').addEventListener('click', restart);
 $('btn-guide').addEventListener('click', () => (guideOpen ? closeGuide() : openGuide()));
 els.sound.addEventListener('click', toggleSound);
+$('btn-cc').addEventListener('click', toggleCaptions);
 els.sound.textContent = 'MUTE';
 
 renderGuide();
