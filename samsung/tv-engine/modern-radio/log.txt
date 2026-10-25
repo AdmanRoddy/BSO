@@ -1,2 +1,12 @@
-[J R-dio] stations from 0 failed: Failed to fetch
-PROBE {"page":"radio","total":0,"allDone":false,"placed":0,"shown":0,"spots":0,"loading":false,"playing":false,"status":"PRESS OK TO PLAY","station":null,"tunedHere":0,"time":0,"overlay":"Can't reach the stations"}
+[J R-dio] stations from 0 (asked 1500): got 1500 from de2
+[J R-dio] stations from 1500 (asked 5000): got 5000 from de2
+[J R-dio] stations from 6500 (asked 5000): got 5000 from de2
+[J R-dio] stations from 11500 (asked 5000): got 5000 from de2
+[J R-dio] stations from 16500 (asked 5000): got 5000 from de2
+[J R-dio] stations from 21500 (asked 5000): got 5000 from de2
+[J R-dio] stations from 26500 (asked 5000): got 5000 from de2
+[J R-dio] stations from 31500 (asked 5000): got 5000 from de2
+[J R-dio] stations from 36500 (asked 5000): got 4268 from de2
+[J R-dio] stations from 40768 (asked 5000): got 0 from de2
+[J R-dio] no new stations from 40768, stopping
+PROBE {"page":"radio","total":40529,"allDone":true,"placed":40099,"shown":40099,"spots":35635,"loading":false,"playing":false,"status":"PRESS OK TO PLAY","station":null,"tunedHere":1,"time":0,"overlay":null}
