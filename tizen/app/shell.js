@@ -41,6 +41,7 @@
   /* ---------- remote buttons ---------- */
   var WANT = ['MediaPlayPause', 'MediaPlay', 'MediaPause', 'MediaStop', 'MediaFastForward', 'MediaRewind',
     'MediaTrackPrevious', 'MediaTrackNext', 'ChannelUp', 'ChannelDown', 'ChannelList', 'Info', 'Caption',
+    'Guide', 'PreviousChannel', 'PictureSize', 'Minus',
     'ColorF0Red', 'ColorF1Green', 'ColorF2Yellow', 'ColorF3Blue', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
   try {
     var sup = tizen.tvinputdevice.getSupportedKeys().map(function (k) { return k.name; });
@@ -50,6 +51,7 @@
   var CODES = { 10009: 'GoBack', 427: 'ChannelUp', 428: 'ChannelDown', 10252: 'MediaPlayPause', 415: 'MediaPlay', 19: 'MediaPause',
     413: 'MediaStop', 417: 'MediaFastForward', 412: 'MediaRewind', 10232: 'MediaTrackPrevious', 10233: 'MediaTrackNext',
     403: 'ColorF0Red', 404: 'ColorF1Green', 405: 'ColorF2Yellow', 406: 'ColorF3Blue', 457: 'Info', 10073: 'ChannelList', 10221: 'Caption',
+    458: 'Guide', 10190: 'PreviousChannel', 10140: 'PictureSize', 189: 'Minus',
     37: 'ArrowLeft', 38: 'ArrowUp', 39: 'ArrowRight', 40: 'ArrowDown', 13: 'Enter', 8: 'Backspace', 27: 'Escape' };
   function keyName(e) {
     if (CODES[e.keyCode]) return CODES[e.keyCode];

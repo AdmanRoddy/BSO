@@ -80,6 +80,8 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.25rem}
 .hints .row{display:flex;align-items:center;gap:.85rem}
 .key{padding:.25rem .75rem;border-radius:.5rem;box-shadow:inset 0 0 0 .125rem rgba(255,255,255,.25);color:var(--ink)}
 .zoom{display:flex;gap:.6rem;pointer-events:auto}
+.cbtn{display:inline-block;min-width:2.2rem;padding:.2rem .5rem;border-radius:.45rem;text-align:center;color:#fff;font-weight:800;letter-spacing:0}
+.cbtn.a{background:#D7262F} .cbtn.b{background:#1FA34A} .cbtn.c{background:#F2C01E;color:#1A1A1A} .cbtn.d{background:#2563D9}
 .zoom button{width:3.25rem;height:3.25rem;border:0;border-radius:50%;background:rgba(255,255,255,.07);font-size:1.75rem;font-weight:700;cursor:pointer}
 
 .overlay{position:fixed;inset:0;display:grid;place-items:center;background:rgba(5,9,26,.72);z-index:5}
@@ -163,7 +165,7 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.25rem}
   </div>
 </section>
 
-<div class="hints" aria-hidden="true">
+<div class="hints" id="hints" aria-hidden="true">
   <div class="row"><span class="key">◀ ▲ ▼ ▶</span><span>ROAM</span><span class="key">OK</span><span>PLAY / NEXT</span></div>
   <div class="row"><span class="key">◀◀ ▶▶</span><span>ZOOM</span><span class="key">MENU</span><span>CATEGORIES</span></div>
   <div class="zoom"><button id="zoom-out" aria-label="Zoom out" tabindex="-1">−</button><button id="zoom-in" aria-label="Zoom in" tabindex="-1">+</button></div>
@@ -655,6 +657,25 @@ function panBy(dxPx, dyPx, smooth) {
   if (!smooth) { view.lon = wrapLon(toLon); view.lat = clampLat(toLat); requestDraw(); settle(); return; }
   animateTo(toLat, toLon, view.z, 220);
 }
+// Remote arrows: jump to the next station that way (nudge the map when none is on screen that way).
+function jump(dx, dy) {
+  cancelAnimationFrame(anim);
+  draw();
+  const cx = W / 2, cy = H / 2, min = Math.min(W, H) * 0.035;
+  let best = null, bs = Infinity;
+  for (const sp of spots) {
+    if (!sp.vis) continue;
+    const vx = sp.x - cx, vy = sp.y - cy;
+    const along = vx * dx + vy * dy;            // how far in the pressed direction
+    if (along < min) continue;
+    const across = Math.abs(vx * dy - vy * dx); // how far off to the side
+    if (across > along * 1.2) continue;
+    const score = along + across * 2;
+    if (score < bs) { bs = score; best = sp; }
+  }
+  if (!best) { panBy(dx * Math.min(W, H) * 0.25, dy * Math.min(W, H) * 0.25, true); return; }
+  animateTo(best.lat, best.lon, view.z, 240);
+}
 function zoomBy(f) { animateTo(view.lat, view.lon, Math.max(2.5, Math.min(160, view.z * f)), 220); }
 function animateTo(lat, lon, z, ms) {
   cancelAnimationFrame(anim);
@@ -697,24 +718,29 @@ window.addEventListener('keydown', (e) => {
     if (k === 'ArrowLeft') { catCursor = Math.max(0, catCursor - 1); renderCats(); }
     else if (k === 'ArrowRight') { catCursor = Math.min(CATS.length - 1, catCursor + 1); renderCats(); }
     else if (k === 'Enter' || k === ' ') okPressed();
-    else if (k === 'ArrowDown' || k === 'Escape' || k === 'ContextMenu' || k === 'ColorF0Red' || code === 82 || k === 'c') setFocusCats(false);
+    else if (k === 'ArrowDown' || k === 'Escape' || k === 'ContextMenu' || k === 'ColorF0Red' || k === 'Guide' || k === 'ChannelList' || code === 82 || k === 'c') setFocusCats(false);
     else return;
     e.preventDefault(); return;
   }
-  if (k === 'ArrowLeft') panBy(-step, 0, true);
-  else if (k === 'ArrowRight') panBy(step, 0, true);
-  else if (k === 'ArrowUp') panBy(0, -step, true);
-  else if (k === 'ArrowDown') panBy(0, step, true);
+  if (e.shiftKey && k.indexOf('Arrow') === 0) {            // keyboard: Shift+arrows still slide the map
+    if (k === 'ArrowLeft') panBy(-step, 0, true); else if (k === 'ArrowRight') panBy(step, 0, true);
+    else if (k === 'ArrowUp') panBy(0, -step, true); else panBy(0, step, true);
+  }
+  else if (k === 'ArrowLeft') jump(-1, 0);
+  else if (k === 'ArrowRight') jump(1, 0);
+  else if (k === 'ArrowUp') jump(0, -1);
+  else if (k === 'ArrowDown') jump(0, 1);
   else if (k === 'Enter' || k === ' ') okPressed();
-  else if (k === '+' || k === '=' || k === 'PageUp' || k === 'MediaFastForward' || code === 228) zoomBy(1.6);
-  else if (k === '-' || k === '_' || k === 'PageDown' || k === 'MediaRewind' || code === 227) zoomBy(1 / 1.6);
+  else if (k === '+' || k === '=' || k === 'PageUp' || k === 'MediaFastForward' || k === 'ColorF3Blue' || code === 228) zoomBy(1.6);
+  else if (k === '-' || k === '_' || k === 'PageDown' || k === 'MediaRewind' || k === 'ColorF2Yellow' || k === 'Minus' || code === 227) zoomBy(1 / 1.6);
+  else if (k === 'Info' || k === '0') animateTo(HOME.lat, HOME.lon, Math.max(view.z, 9.6), 500);
   else if (k === 'MediaPlayPause' || code === 179 || k === 'p') togglePlay();
   else if (k === 'MediaPlay') { if (!playing) togglePlay(); }
   else if (k === 'MediaPause' || k === 'MediaStop') { if (playing) togglePlay(); }
   else if (k === 'ChannelUp' || k === 'MediaTrackNext') stepStation(1);
   else if (k === 'ChannelDown' || k === 'MediaTrackPrevious') stepStation(-1);
-  else if (k === 'ContextMenu' || k === 'ColorF0Red' || k === 'ChannelList' || code === 82 || code === 93 || k === 'c') setFocusCats(true);
-  else if (k === 'f' || k === 'ColorF2Yellow') toggleFav();
+  else if (k === 'ContextMenu' || k === 'ColorF0Red' || k === 'ChannelList' || k === 'Guide' || code === 82 || code === 93 || k === 'c') setFocusCats(true);
+  else if (k === 'f' || k === 'ColorF1Green') toggleFav();
   else if (k === 'h') animateTo(HOME.lat, HOME.lon, view.z, 400);
   else return;
   e.preventDefault();
@@ -810,6 +836,14 @@ if (window.matchMedia && matchMedia('(pointer: coarse)').matches) {
   els.where.textContent = 'Drag the map · tap a dot to tune';
 }
 window.addEventListener('resize', resize);
+// On a TV the hints show the buttons on the Samsung (and similar) remote.
+const ON_TV = inApp || /SMART-TV|Tizen|Web0S|AFT|BRAVIA/i.test(navigator.userAgent);
+if (ON_TV) {
+  $('hints').innerHTML =
+    '<div class="row"><span class="key">\u25C0 \u25B2 \u25BC \u25B6</span><span>NEXT STATION</span><span class="key">OK</span><span>PLAY</span></div>' +
+    '<div class="row"><span class="key">CH \u2227 \u2228</span><span>MORE STATIONS HERE</span><span class="key">INFO</span><span>HOME</span></div>' +
+    '<div class="row"><span class="cbtn a">A</span><span>GENRES</span><span class="cbtn b">B</span><span>\u2665 SAVE</span><span class="cbtn c">C</span><span>ZOOM \u2212</span><span class="cbtn d">D</span><span>ZOOM +</span></div>';
+}
 resize();
 renderCats();
 setCount();

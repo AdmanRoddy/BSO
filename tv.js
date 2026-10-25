@@ -68,7 +68,8 @@
     10252: 'MediaPlayPause', 415: 'MediaPlay', 19: 'MediaPause', 413: 'MediaStop',
     417: 'MediaFastForward', 412: 'MediaRewind', 10232: 'MediaTrackPrevious', 10233: 'MediaTrackNext',
     403: 'ColorF0Red', 404: 'ColorF1Green', 405: 'ColorF2Yellow', 406: 'ColorF3Blue',
-    457: 'Info', 10073: 'ChannelList', 10135: 'Tools', 10221: 'Caption', 10140: 'Menu'
+    457: 'Info', 10073: 'ChannelList', 10135: 'Tools', 10221: 'Caption', 458: 'Guide', 10190: 'PreviousChannel',
+    10140: 'PictureSize', 189: 'Minus', 10146: 'EManual'
   };
   var NAMES = {
     XF86Back: 'GoBack', XF86Exit: 'Exit', XF86RaiseChannel: 'ChannelUp', XF86LowerChannel: 'ChannelDown',
