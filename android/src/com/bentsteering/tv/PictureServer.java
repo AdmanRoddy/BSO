@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 import org.json.JSONArray;
 
 /**
@@ -32,6 +34,7 @@ import org.json.JSONArray;
 final class PictureServer {
     static final int PORT = 8686;
     private static final long MAX_BYTES = 25L * 1024 * 1024;
+    private static final long MAX_ZIP_BYTES = 1500L * 1024 * 1024;
     private static final Charset UTF8 = Charset.forName("UTF-8");
     private static PictureServer running;
 
@@ -112,6 +115,11 @@ final class PictureServer {
                 sendFile(out, f);
             } else if ("POST".equals(method) && ("/upload".equals(path) || "/delete".equals(path))) {
                 if (!pin.equals(p.get("pin"))) { drain(in, len); send(out, 403, "application/json", "{\"error\":\"Wrong PIN\"}".getBytes(UTF8)); return; }
+                if ("/upload".equals(path) && name.toLowerCase(Locale.US).endsWith(".zip") && !PrivateFiles.folder(ctx, kind).isEmpty()) {
+                    if (len <= 0 || len > MAX_ZIP_BYTES) { drain(in, len); send(out, 413, "application/json", "{\"error\":\"Zip is empty or too big\"}".getBytes(UTF8)); return; }
+                    send(out, 200, "application/json", unzip(in, len, kind).getBytes(UTF8));
+                    return;
+                }
                 File f = file(kind, name);
                 if (f == null) { drain(in, len); send(out, 400, "application/json", "{\"error\":\"Pictures only (png, jpg, webp, gif)\"}".getBytes(UTF8)); return; }
                 if ("/delete".equals(path)) {
@@ -135,7 +143,8 @@ final class PictureServer {
                 }
                 if (f.exists()) f.delete();
                 boolean ok = tmp.renameTo(f);
-                send(out, ok ? 200 : 500, "application/json", ("{\"ok\":" + ok + "}").getBytes(UTF8));
+                String to = ok ? Pictures.ingest(ctx, kind, f) : kind;
+                send(out, ok ? 200 : 500, "application/json", ("{\"ok\":" + ok + ",\"to\":\"" + to + "\"}").getBytes(UTF8));
             } else {
                 drain(in, len);
                 send(out, 404, "text/plain", "not found".getBytes(UTF8));
@@ -144,6 +153,45 @@ final class PictureServer {
         } finally {
             try { s.close(); } catch (IOException ignored) { }
         }
+    }
+
+    /** A whole folder as a .zip (what Google Drive downloads): every picture in it is added. */
+    private String unzip(InputStream in, long len, String kind) throws IOException {
+        File zip = new File(ctx.getCacheDir(), "pictures-upload.zip");
+        try (FileOutputStream fo = new FileOutputStream(zip)) {
+            byte[] buf = new byte[65536];
+            long left = len;
+            while (left > 0) {
+                int n = in.read(buf, 0, (int) Math.min(buf.length, left));
+                if (n < 0) break;
+                fo.write(buf, 0, n);
+                left -= n;
+            }
+            if (left > 0) throw new IOException("upload cut short");
+        }
+        int added = 0, toBadges = 0;
+        try (ZipInputStream z = new ZipInputStream(new BufferedInputStream(new FileInputStream(zip)))) {
+            byte[] buf = new byte[65536];
+            for (ZipEntry e = z.getNextEntry(); e != null; e = z.getNextEntry()) {
+                String full = e.getName().replace('\\', '/');
+                String base = full.substring(full.lastIndexOf('/') + 1);
+                if (e.isDirectory() || full.contains("__MACOSX") || base.startsWith(".") || !Pictures.isPicture(base)) continue;
+                String clean = base.replaceAll("[^A-Za-z0-9._ ()-]", "-").replaceAll("^[^A-Za-z0-9]+", "");
+                File f = file(kind, clean);
+                if (f == null) continue;
+                long size = 0;
+                try (FileOutputStream fo = new FileOutputStream(f)) {
+                    int n;
+                    while ((n = z.read(buf)) > 0) { size += n; if (size > MAX_BYTES) break; fo.write(buf, 0, n); }
+                }
+                if (size > MAX_BYTES) { f.delete(); continue; }
+                added++;
+                if ("badges".equals(Pictures.ingest(ctx, kind, f)) && !"badges".equals(kind)) toBadges++;
+            }
+        } finally {
+            zip.delete();
+        }
+        return "{\"ok\":true,\"added\":" + added + ",\"badges\":" + toBadges + "}";
     }
 
     /** The file for an upload, or null when the kind or name isn't allowed. */
@@ -221,10 +269,11 @@ final class PictureServer {
             + ".msg{min-height:22px;color:#A9B4D0}.msg.err{color:#ff8a8a}</style></head><body><main>"
             + "<h1>Bent Steering TV pictures</h1><p>These stay on the Fire Stick only. Blueprints rotate on the home screen; the first three crawler photos show beside the clock.</p>"
             + "<label for=pin>PIN shown on the TV</label><input id=pin type=password inputmode=numeric maxlength=4 autocomplete=off>"
-            + "<section data-kind=blueprints><h2>Blueprints</h2><p>PNG with a transparent background looks best.</p>"
-            + "<label class=drop>Choose or drop pictures<input type=file accept='image/*' multiple hidden></label><div class=msg></div><div class=grid></div></section>"
+            + "<section data-kind=blueprints><h2>Blueprints</h2><p>Drop the whole folder, or the .zip Google Drive gives you when you download a folder. Screenshots are cleaned up automatically (white lines, no background), and color pictures go to Crawler photos.</p>"
+            + "<label class=drop>Choose or drop pictures, a folder or a .zip<input type=file accept='image/*,.zip' multiple hidden></label>"
+            + "<label class=drop>Choose a whole folder<input type=file webkitdirectory multiple hidden></label><div class=msg></div><div class=grid></div></section>"
             + "<section data-kind=badges><h2>Crawler photos</h2>"
-            + "<label class=drop>Choose or drop pictures<input type=file accept='image/*' multiple hidden></label><div class=msg></div><div class=grid></div></section>"
+            + "<label class=drop>Choose or drop pictures<input type=file accept='image/*,.zip' multiple hidden></label><div class=msg></div><div class=grid></div></section>"
             + "</main><script>"
             + "const pin=document.getElementById('pin');pin.value=localStorage.getItem('bsopin')||'';pin.oninput=()=>localStorage.setItem('bsopin',pin.value);"
             + "const clean=n=>n.replace(/[^A-Za-z0-9._ ()-]/g,'-').replace(/^[^A-Za-z0-9]+/,'').slice(-110)||'picture.png';"
@@ -234,11 +283,18 @@ final class PictureServer {
             + "t.querySelector('button').onclick=async()=>{const r=await fetch('/delete?kind='+k+'&name='+encodeURIComponent(n)+'&pin='+pin.value,{method:'POST'});if(!r.ok)return say(sec,'Check the PIN on the TV',1);list(sec)};g.appendChild(t)}"
             + "say(sec,names.length+' on the stick')}"
             + "function say(sec,t,err){const m=sec.querySelector('.msg');m.textContent=t;m.className='msg'+(err?' err':'')}"
-            + "async function send(sec,files){const k=sec.dataset.kind;let n=0;for(const f of files){say(sec,'Sending '+(++n)+' of '+files.length+'…');"
+            + "const ok=f=>/\\.(png|jpe?g|webp|gif|zip)$/i.test(f.name)&&!f.name.startsWith('.');"
+            + "async function send(sec,files){files=files.filter(ok);if(!files.length)return say(sec,'No pictures found there',1);const k=sec.dataset.kind;let n=0,moved=0;"
+            + "for(const f of files){say(sec,(/\\.zip$/i.test(f.name)?'Unpacking ':'Sending ')+(++n)+' of '+files.length+'…');"
             + "const r=await fetch('/upload?kind='+k+'&name='+encodeURIComponent(clean(f.name))+'&pin='+pin.value,{method:'POST',body:f});"
-            + "if(!r.ok){const j=await r.json().catch(()=>({}));say(sec,(j.error||'Upload failed')+' — '+f.name,1);return}}list(sec)}"
-            + "for(const sec of document.querySelectorAll('section')){const d=sec.querySelector('.drop'),i=d.querySelector('input');"
+            + "const j=await r.json().catch(()=>({}));if(!r.ok){say(sec,(j.error||'Upload failed')+' — '+f.name,1);return}if(j.to==='badges'||j.badges)moved+=(j.badges||1)}"
+            + "for(const s of document.querySelectorAll('section'))await list(s);if(moved)say(sec,'Done · '+moved+' color picture'+(moved>1?'s':'')+' went to Crawler photos')}"
+            + "function walk(entry){return new Promise(res=>{if(entry.isFile)entry.file(f=>res([f]),()=>res([]));else if(entry.isDirectory){const r=entry.createReader(),all=[];"
+            + "const next=()=>r.readEntries(async es=>{if(!es.length){const parts=await Promise.all(all.map(walk));res(parts.flat())}else{all.push(...es);next()}},()=>res([]));next()}else res([])})}"
+            + "async function dropped(e){const items=[...(e.dataTransfer.items||[])].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);"
+            + "if(!items.length)return [...e.dataTransfer.files];return (await Promise.all(items.map(walk))).flat()}"
+            + "for(const sec of document.querySelectorAll('section')){for(const d of sec.querySelectorAll('.drop')){const i=d.querySelector('input');"
             + "i.onchange=()=>send(sec,[...i.files]);d.ondragover=e=>{e.preventDefault();d.classList.add('on')};d.ondragleave=()=>d.classList.remove('on');"
-            + "d.ondrop=e=>{e.preventDefault();d.classList.remove('on');send(sec,[...e.dataTransfer.files])};list(sec)}"
+            + "d.ondrop=async e=>{e.preventDefault();d.classList.remove('on');send(sec,await dropped(e))}}list(sec)}"
             + "</script></body></html>";
 }
