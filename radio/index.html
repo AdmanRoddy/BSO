@@ -373,9 +373,10 @@ async function idbGet(k) { try { const db = await idb(); return await new Promis
 async function idbSet(k, v) { try { const db = await idb(); db.transaction('kv', 'readwrite').objectStore('kv').put(v, k); } catch (e) { /* storage off: reload next time */ } }
 
 function pagePath(offset, limit) {
-  const p = new URLSearchParams({ hidebroken: 'true', order: 'clickcount', reverse: 'true', offset: String(offset), limit: String(limit) });
-  if (httpsOnly) p.set('is_https', 'true');
-  return '/json/stations/search?' + p.toString();
+  // written out by hand: 2018 TVs (Chromium 56) can't build URLSearchParams from an object
+  const q = { hidebroken: 'true', order: 'clickcount', reverse: 'true', offset: String(offset), limit: String(limit) };
+  if (httpsOnly) q.is_https = 'true';
+  return '/json/stations/search?' + Object.keys(q).map((k) => encodeURIComponent(k) + '=' + encodeURIComponent(q[k])).join('&');
 }
 const rlog = (m) => { try { console.log('[J R-dio] ' + m); } catch (e) { /* no console */ } if (window.bsoTizen && window.bsoTizen.on) window.bsoTizen.tell('log', { msg: m }); };
 async function fetchAll(quiet) {
@@ -387,7 +388,9 @@ async function fetchAll(quiet) {
     try { list = await api(pagePath(offset, limit), 60000); }
     catch (e) { rlog('stations from ' + offset + ' failed: ' + (e && e.message)); if (!out.length && !quiet) throw e; break; }
     rlog('stations from ' + offset + ' (asked ' + limit + '): got ' + list.length + ' from ' + goodHost);
-    for (const st of list) if (st && !seen.has(st.stationuuid) && usable(st)) { seen.add(st.stationuuid); out.push(slim(st)); }
+    const before = seen.size;
+    for (const st of list) if (st && !seen.has(st.stationuuid)) { seen.add(st.stationuuid); if (usable(st)) out.push(slim(st)); }
+    if (page && seen.size === before) { rlog('no new stations from ' + offset + ', stopping'); break; }   // a server ignoring the offset
     offset += list.length;
     if (!quiet) { all = out; place(); refresh(page === 0); setCount(); }
     // Some directory servers hand back at most 1,000 at a time, so a short page isn't always the end.
