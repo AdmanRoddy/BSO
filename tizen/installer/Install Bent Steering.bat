@@ -61,6 +61,11 @@ if errorlevel 1 (
 
 rem Same steps as Samsung's own tools: the package goes in sdk_tools/tmp, and the TV is given the full app id.
 set "DEST=/home/owner/share/tmp/sdk_tools/tmp/BentSteering.wgt"
+echo    Clearing out copies left by earlier tries ...
+type nul > "%TEMP%\bso-empty.wgt"
+"%SDB%" -s !DEV! push "%TEMP%\bso-empty.wgt" "/home/owner/share/tmp/sdk_tools/BentSteering.wgt" >nul 2>&1
+"%SDB%" -s !DEV! push "%TEMP%\bso-empty.wgt" "/home/owner/share/tmp/sdk_tools/tmp/BentSteering.wgt" >nul 2>&1
+"%SDB%" -s !DEV! shell 0 rmfile >nul 2>&1
 echo    Sending the app to the TV ...
 "%SDB%" -s !DEV! push "BentSteering.wgt" "!DEST!"
 if errorlevel 1 (
@@ -82,10 +87,18 @@ if not errorlevel 1 (
 )
 findstr /l /c:"failed[" "%LOG%" >nul
 if not errorlevel 1 (
+  call :tidy
   echo.
-  echo    The install didn't work. Take a photo of this window and send it to Claude.
+  findstr /l /c:"failed[116]" "%LOG%" >nul
+  if not errorlevel 1 (
+    echo    The TV is out of storage space. On the TV: Home, Apps, then the gear icon at the top right.
+    echo    Delete a few apps you don't use, then run this again.
+  ) else (
+    echo    The install didn't work. Take a photo of this window and send it to Claude.
+  )
   goto :end
 )
+call :tidy
 
 echo    Starting Bent Steering on the TV ...
 "%SDB%" -s !DEV! shell 0 execute %APPID% >nul 2>&1
@@ -95,6 +108,12 @@ echo    Done. Bent Steering is on the TV.
 echo    To have it come up when the TV turns on: on the TV, Settings ^> General ^> Smart Features,
 echo    turn Autorun Last App ON and Autorun Smart Hub OFF.
 goto :end
+
+:tidy
+rem take the uploaded package off the TV again so it doesn't use up space
+"%SDB%" -s !DEV! push "%TEMP%\bso-empty.wgt" "!DEST!" >nul 2>&1
+"%SDB%" -s !DEV! shell 0 rmfile >nul 2>&1
+exit /b
 
 :install
 "%SDB%" -s !DEV! shell 0 vd_appinstall %APPID% "!DEST!" > "%LOG%" 2>&1
