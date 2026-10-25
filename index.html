@@ -182,9 +182,10 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
 (() => {
 'use strict';
 
-/* Each channel plays one creator's YouTube uploads (their public "UU…" uploads playlist),
-   a show playlist ("list"), or a hand-picked set of videos ("ids", e.g. Dirt Every Day full episodes from MotorTrend). */
-const CHANNELS = [{"name": "Bleepin' Jeep", "id": "UCvlG_ZnHoZLPv0CVWOC0a1Q"}, {"name": "Matt's Off Road Recovery", "id": "UCwdVOry0oNF9WIe_3uCfz9Q"}, {"name": "Trailmater", "id": "UC7gdYr2K4ubgydDnmYWl_hw"}, {"name": "4WD 24/7", "id": "UCs-vWZu3t2ky3oImX83S_2Q"}, {"name": "TrailRecon", "id": "UCEEgz9PD6iTRSB0VXNbWvRw"}, {"name": "Ozark Overland Adventures", "id": "UCgbmZmCWIzOwKzAN-0UaWHg"}, {"name": "Braap Family Offroad", "id": "UCcv6oRFbxl0Mgo00O-5Z5FQ"}, {"name": "Busted Knuckle Films", "id": "UCwJOLhqkBHVnT5wA1mkOzdg"}, {"name": "Cleetus McFarland", "id": "UCh8f8vssLddD2PbnU3Ag_Bw"}, {"name": "Tom's Refurb", "id": "UCt6P2xQpu-f32AALrl2B06A"}, {"name": "DeXJs", "id": "UC_kw_59aBWQn7HLGaH7IHVA"}, {"name": "Grind Hard Plumbing Co", "id": "UCivi_f1nniBzEOfKhRoN12Q"}, {"name": "JK Gear and Gadgets", "id": "UC3-bMz3L8wgzLlkLcXA4O0Q"}, {"name": "Roadkill", "id": "PL12C0C916CECEA3BC", "list": "PL12C0C916CECEA3BC"}, {"name": "The Dirthead Shed", "id": "UCXn7Te8ZzhvXr6y7Gdo_YMw"}, {"name": "David Freiburger", "id": "UCFLVC_a8re9aV_58GuibCeQ"}, {"name": "Tony Angelo · Stay Tuned", "id": "UC9yHbzcmcVTeYvczQAOyjfQ"}, {"name": "4xFred", "id": "UCkT01O7300zPCCOWTUOo9yQ"}, {"name": "Dirt Every Day", "id": "ded-full-episodes", "ids": ["oGGRAXhxZVA", "PER_kCPM8t8", "CJRon2cLb18", "CKGdw5DJTXg", "7vEHU5ygoUU", "NvL3iDW4t5k", "svX0bWoAyDU", "Y8Ob9ydXzk4", "XGhpXYlRZZg", "YjjzQHN5ra8", "noT4R_oF3Ec", "nezjZy6H6t8", "ksoiFhlpef0", "AWP62C_KgA8", "kwZL3BEd8lA", "YtKu_yTwXbg", "e771bo6Qg-c", "eWSBCUtKuXM", "icp2Pb5uoME", "26fuyeFVVXQ", "2OE5w30y6mY", "K5CYmklIx5Q", "uJ8wSlDoRI4", "i5R59KtMJKo", "kTrynzhk9Xs", "70aRFqljRMo", "uPXQqhl6BoA", "cYdeWktsCGw", "mum9b_z1LvM", "gmtG4QtcIEY", "hAWxGA9NLso", "iIQD7EWoQy4"]}, {"name": "Unreal Adventure 4x4", "id": "UCcsJQd7yZQWs2WSUK8GeK8g"}, {"name": "WhistlinDiesel", "id": "UCdqp0KK_Io7TwK5cJMBvB0Q"}, {"name": "Off Road N Chill", "id": "UCUXImQ05kgJfdj1naJouIjw"}, {"name": "Westen Champlin", "id": "UChRlaISXbl2gECFAmDzxgzg"}, {"name": "Flex, Rocks & Rollovers", "id": "UCZZNZTEKZHqwX6dsMM-GpmA"}, {"name": "Cleetus McFarland 2", "id": "UCMJbbWyIziiUamP5JKK9yAA"}, {"name": "Team Refurb", "id": "UCJ6Uk-Ns7mcsQDI4dRjY7AQ"}];
+/* Each channel plays one creator's YouTube uploads (their long-videos list "UULF…", falling back to all
+   uploads "UU…"), a show playlist ("list"), a hand-picked set of videos ("ids", e.g. Dirt Every Day full
+   episodes from MotorTrend), or several creators shuffled together ("mix": [channel ids]). */
+const CHANNELS = [{"name": "Bleepin' Jeep", "id": "UCvlG_ZnHoZLPv0CVWOC0a1Q"}, {"name": "Matt's Off Road Recovery", "id": "UCwdVOry0oNF9WIe_3uCfz9Q"}, {"name": "Trailmater", "id": "UC7gdYr2K4ubgydDnmYWl_hw"}, {"name": "4WD 24/7", "id": "UCs-vWZu3t2ky3oImX83S_2Q"}, {"name": "TrailRecon", "id": "UCEEgz9PD6iTRSB0VXNbWvRw"}, {"name": "Ozark Overland Adventures", "id": "UCgbmZmCWIzOwKzAN-0UaWHg"}, {"name": "Braap Family Offroad", "id": "UCcv6oRFbxl0Mgo00O-5Z5FQ"}, {"name": "Busted Knuckle Films", "id": "UCwJOLhqkBHVnT5wA1mkOzdg"}, {"name": "Cleetus McFarland", "id": "UCh8f8vssLddD2PbnU3Ag_Bw"}, {"name": "Tom's Refurb", "id": "UCt6P2xQpu-f32AALrl2B06A"}, {"name": "DeXJs", "id": "UC_kw_59aBWQn7HLGaH7IHVA"}, {"name": "Grind Hard Plumbing Co", "id": "UCivi_f1nniBzEOfKhRoN12Q"}, {"name": "JK Gear and Gadgets", "id": "UC3-bMz3L8wgzLlkLcXA4O0Q"}, {"name": "Roadkill", "id": "PL12C0C916CECEA3BC", "list": "PL12C0C916CECEA3BC"}, {"name": "The Dirthead Shed", "id": "UCXn7Te8ZzhvXr6y7Gdo_YMw"}, {"name": "David Freiburger", "id": "UCFLVC_a8re9aV_58GuibCeQ"}, {"name": "Tony Angelo · Stay Tuned", "id": "UC9yHbzcmcVTeYvczQAOyjfQ"}, {"name": "4xFred", "id": "UCkT01O7300zPCCOWTUOo9yQ"}, {"name": "Dirt Every Day", "id": "ded-full-episodes", "ids": ["oGGRAXhxZVA", "PER_kCPM8t8", "CJRon2cLb18", "CKGdw5DJTXg", "7vEHU5ygoUU", "NvL3iDW4t5k", "svX0bWoAyDU", "Y8Ob9ydXzk4", "XGhpXYlRZZg", "YjjzQHN5ra8", "noT4R_oF3Ec", "nezjZy6H6t8", "ksoiFhlpef0", "AWP62C_KgA8", "kwZL3BEd8lA", "YtKu_yTwXbg", "e771bo6Qg-c", "eWSBCUtKuXM", "icp2Pb5uoME", "26fuyeFVVXQ", "2OE5w30y6mY", "K5CYmklIx5Q", "uJ8wSlDoRI4", "i5R59KtMJKo", "kTrynzhk9Xs", "70aRFqljRMo", "uPXQqhl6BoA", "cYdeWktsCGw", "mum9b_z1LvM", "gmtG4QtcIEY", "hAWxGA9NLso", "iIQD7EWoQy4"]}, {"name": "Unreal Adventure 4x4", "id": "UCcsJQd7yZQWs2WSUK8GeK8g"}, {"name": "WhistlinDiesel", "id": "UCdqp0KK_Io7TwK5cJMBvB0Q"}, {"name": "Off Road N Chill", "id": "UCUXImQ05kgJfdj1naJouIjw"}, {"name": "Westen Champlin", "id": "UChRlaISXbl2gECFAmDzxgzg"}, {"name": "Flex, Rocks & Rollovers", "id": "UCZZNZTEKZHqwX6dsMM-GpmA"}, {"name": "Cleetus McFarland 2", "id": "UCMJbbWyIziiUamP5JKK9yAA"}, {"name": "Team Refurb", "id": "UCJ6Uk-Ns7mcsQDI4dRjY7AQ"}, {"name": "John Malecki Unscrewed", "id": "UCtR-g66KS3o37mbbSTrNm2Q"}, {"name": "Speeed", "id": "UC_mmaVYaFmlfdxuKb6U69Yw"}, {"name": "BigTime", "id": "UCxpbaAGBv4zrRJx_AjGdVLA"}, {"name": "Bizly", "id": "UCMPGiQ8gwDXFYpwQhX6kK9A"}, {"name": "Gone Jeepn", "id": "UCEitCP-U2VlJzjgFMfyJN7w"}, {"name": "Jenna Marbles", "id": "mix-jenna", "mix": ["UC9gFih9rw0zNCK3ZtoKQQyA"]}, {"name": "Preston Goes", "id": "UCI3yTtc0kShZ-S_Qsd5VTSQ"}];
 
 const MIN_LEN = 150;        // skip Shorts and clips under 2½ minutes
 const MAX_TRIES = 10;       // videos to try before calling a channel unavailable
@@ -219,6 +220,7 @@ let token = 0;                          // bumps on every tune, so stale callbac
 let prog = null;                        // {vid, live, seeked, seq, tries, token, pinned}
 const playlists = new Map();            // channel id -> [video ids]
 const bad = new Set(store.get('bad', []));
+try { Object.keys(localStorage).forEach((k) => { if (k.startsWith('bsotv:pl:')) localStorage.removeItem(k); }); } catch (e) { /* old all-uploads cache */ }
 let cueWaiter = null, guideOpen = false, guideCursor = 0, muted = false;
 let watchdog = 0, ytBlocked = false;
 
@@ -281,10 +283,9 @@ function onError() {
 }
 function markBad(v) { if (!v) return; bad.add(v); store.set('bad', [...bad].slice(-400)); }
 
-function cueUploads(ch) {
-  // Ask the player for the channel's uploads list; it hands back the video ids it can see.
+function cueList(list) {
+  // Ask the player for a playlist; it hands back the video ids it can see.
   return new Promise((resolve) => {
-    const list = ch.list || ('UU' + ch.id.slice(2));   // a show playlist, or the creator's uploads
     let done = false, polls = 0;
     const finish = () => {
       if (done) return;
@@ -297,13 +298,25 @@ function cueUploads(ch) {
     player.cuePlaylist({ listType: 'playlist', list, index: 0 });
   });
 }
+async function cueUploads(ch) {
+  if (ch.list) return cueList(ch.list);                          // a show playlist
+  const ids = await cueList('UULF' + ch.id.slice(2));            // creator's long videos only (no Shorts)
+  return ids.length ? ids : cueList('UU' + ch.id.slice(2));      // or all their uploads
+}
 async function idsFor(ch) {
   if (ch.ids) return ch.ids;
   if (playlists.has(ch.id)) return playlists.get(ch.id);
-  const cached = store.get('pl:' + ch.id, null);
-  if (cached && Date.now() - cached.t < 12 * 3600000 && cached.ids.length) { playlists.set(ch.id, cached.ids); return cached.ids; }
-  const ids = await cueUploads(ch);
-  if (ids.length) { playlists.set(ch.id, ids); store.set('pl:' + ch.id, { t: Date.now(), ids }); }
+  let ids;
+  if (ch.mix) {
+    ids = [];
+    for (const id of ch.mix) ids = ids.concat(await idsFor({ id }));
+  } else {
+    const cached = store.get('lf:' + ch.id, null);
+    if (cached && Date.now() - cached.t < 12 * 3600000 && cached.ids.length) { playlists.set(ch.id, cached.ids); return cached.ids; }
+    ids = await cueUploads(ch);
+    if (ids.length) store.set('lf:' + ch.id, { t: Date.now(), ids });
+  }
+  if (ids.length) playlists.set(ch.id, ids);
   return ids;
 }
 
