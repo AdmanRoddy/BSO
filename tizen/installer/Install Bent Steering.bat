@@ -33,10 +33,15 @@ if defined TVIP (
   set /p "NEW=   TV address [!TVIP!] - press Enter to use it, or type a new one: "
   if defined NEW set "TVIP=!NEW!"
 ) else (
-  set /p "TVIP=   Type the TV's address (like 192.168.1.50) and press Enter: "
+  set /p "TVIP=   Type the TV's address, for example 192.168.1.50, and press Enter: "
 )
 if not defined TVIP goto :end
+rem keep only the address itself: no spaces or brackets
 set "TVIP=!TVIP: =!"
+set "TVIP=!TVIP:(=!"
+set "TVIP=!TVIP:)=!"
+set "TVIP=!TVIP:[=!"
+set "TVIP=!TVIP:]=!"
 > "tv-address.txt" echo !TVIP!
 set "DEV=!TVIP!:26101"
 
