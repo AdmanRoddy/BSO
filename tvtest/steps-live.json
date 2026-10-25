@@ -1,0 +1,90 @@
+[
+{
+"ask": "home",
+"t": 10
+},
+{
+"shot": "01-home",
+"t": 10.5
+},
+{
+"key": "Enter",
+"t": 12
+},
+{
+"ask": "tv-30s",
+"t": 40
+},
+{
+"shot": "02-bsotv",
+"t": 40.5
+},
+{
+"ask": "tv-45s",
+"t": 55
+},
+{
+"shot": "03-bsotv-later",
+"t": 55.5
+},
+{
+"code": 427,
+"t": 56
+},
+{
+"ask": "tv-ch2",
+"t": 80
+},
+{
+"shot": "04-bsotv-ch2",
+"t": 80.5
+},
+{
+"code": 10009,
+"t": 82
+},
+{
+"ask": "home-again",
+"t": 90
+},
+{
+"key": "Down",
+"t": 91
+},
+{
+"key": "Enter",
+"t": 92
+},
+{
+"ask": "radio-loaded",
+"t": 125
+},
+{
+"shot": "05-radio",
+"t": 125.5
+},
+{
+"key": "Enter",
+"t": 126
+},
+{
+"ask": "radio-playing",
+"t": 150
+},
+{
+"shot": "06-radio-playing",
+"t": 150.5
+},
+{
+"code": 10009,
+"t": 152
+},
+{
+"ask": "home-end",
+"t": 160
+},
+{
+"shot": "07-home-end",
+"t": 160.5
+}
+]

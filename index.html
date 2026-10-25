@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <title>BSO TV — Bent Steering Offroad</title>
+<script>/* Older smart-TV browsers (2018 Samsung / Chromium 56) are missing a couple of things; add them before anything else runs. */
+(function(){
+if(!String.prototype.padStart){String.prototype.padStart=function(len,pad){var s=String(this);pad=pad===undefined?' ':String(pad);if(s.length>=len||!pad.length)return s;var fill='';while(fill.length<len-s.length)fill+=pad;return fill.slice(0,len-s.length)+s;};}
+if(typeof window.AbortController==='undefined'){window.AbortController=function(){var self=this;this.signal={aborted:false};this.abort=function(){self.signal.aborted=true;};};}
+})();
+</script>
+<script src="tv.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1530'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-style='italic' font-size='23' fill='%23FFFFFF'%3EBSO%3C/text%3E%3Crect x='12' y='46' width='40' height='5' rx='2.5' fill='%23E0262F'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,400;0,600;0,700;0,800;1,800;1,900&family=Saira+Condensed:wght@600;700&display=swap">
@@ -99,7 +106,7 @@ body.ui .bug{opacity:.42}      /* the logo shows with the info banner, not over 
 .notice h2{margin:0 0 .5rem;font-size:2rem;font-style:italic;font-weight:900}
 .notice p{margin:0;font-size:1.35rem;color:var(--muted);line-height:1.4}
 .static{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity .25s ease;
-  background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 2px,transparent 2px 4px),var(--bg)}
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0,rgba(255,255,255,.035) 2px,transparent 2px,transparent 4px),var(--bg)}
 .static.on{opacity:1}
 .static .tuning{position:absolute;left:50%;top:45%;transform:translate(-50%,-50%);font-family:'Saira Condensed',sans-serif;font-size:1.6rem;font-weight:700;letter-spacing:.3em;color:var(--muted)}
 .numentry{position:fixed;right:3rem;top:6.5rem;z-index:7;padding:.4rem 1.2rem;border-radius:.6rem;background:var(--panel-solid);font-size:3rem;font-weight:900;font-style:italic;font-variant-numeric:tabular-nums}
@@ -107,7 +114,7 @@ body.ui .bug{opacity:.42}      /* the logo shows with the info banner, not over 
 
 /* commercial break: covers YouTube's ads with a BSO slate */
 .adbreak{position:fixed;inset:0;z-index:4;display:grid;place-items:center;opacity:0;pointer-events:none;transition:opacity .3s ease;
-  background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 2px,transparent 2px 4px),radial-gradient(ellipse at 50% 42%,#10204D 0%,var(--bg) 68%)}
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0,rgba(255,255,255,.03) 2px,transparent 2px,transparent 4px),radial-gradient(ellipse at 50% 42%,#10204D 0%,var(--bg) 68%)}
 .adbreak.on{opacity:1}
 .ab-inner{display:flex;flex-direction:column;align-items:center;gap:1.6rem;text-align:center;width:min(86vw,72rem)}
 .ab-inner img{width:min(52rem,72vw);margin-bottom:1.4rem}
@@ -131,6 +138,37 @@ body.ui .bug{opacity:.42}      /* the logo shows with the info banner, not over 
   .ch-btns button.wide{padding:0 .85rem}
   .hint{display:none}
   .ab-title{font-size:2.6rem} .ab-sub{font-size:1.15rem} .ab-ch{font-size:.95rem} .ab-note{font-size:.85rem;bottom:1.5rem}
+}
+
+/* ===== Fallbacks for 2018-era smart-TV browsers (no CSS grid, inset, clamp, fl/grid gap) — modern browsers skip these ===== */
+@supports not (inset:0){
+  #stage,#touch,#player,#stage iframe,#boot,.static,.adbreak{top:0;right:0;bottom:0;left:0}
+}
+@supports not (display:grid){
+  #boot,.adbreak{display:flex;align-items:center;justify-content:center}
+  .ch-btns button{display:flex;align-items:center;justify-content:center}
+}
+@supports not (width:clamp(1px,1vw,2px)){
+  html{font-size:16px}
+  .boot-inner{width:80vw} .boot-line{width:28rem} .guide{width:44rem}
+  .ab-inner{width:72rem} .ab-inner img{width:52rem} .ab-stripes{width:30rem}
+}
+@supports not (background:linear-gradient(0deg,#000 0 2px,#111 2px 4px)){
+  .static{background:#05091A}
+  .adbreak{background:radial-gradient(ellipse at 50% 42%,#10204D 0%,#05091A 68%)}
+}
+@supports not (gap:1px){
+  .boot-inner>*+*{margin-top:4rem}
+  .streaks>*+*{margin-top:2.2rem}
+  .ch-info>*+*{margin-top:.35rem}
+  .ch-top>*+*,.prog>*+*{margin-left:1rem}
+  .hint .key{margin:0 .75rem 0 1.5rem}
+  .hint .key:first-child{margin-left:0}
+  .row>*+*{margin-left:1.25rem}
+  .ch-btns>*+*{margin-left:.75rem}
+  .guide header>*+*{margin-top:1rem}
+  .ab-inner>*+*{margin-top:1.6rem}
+  .ab-stripes>*+*{margin-top:.6rem}
 }
 </style>
 </head>
@@ -554,13 +592,13 @@ function renderGuide() {
     if (i !== chIndex && now) now.remove();
   });
   const c = els.list.children[guideOpen ? guideCursor : chIndex];
-  if (c && c.scrollIntoView) c.scrollIntoView({ block: 'nearest' });
+  if (c) (window.bsoScrollTo || ((el) => el.scrollIntoView(false)))(c);
 }
 function openGuide() { guideOpen = true; guideCursor = chIndex; els.guide.classList.add('open'); renderGuide(); showBanner(); }
 function closeGuide() { guideOpen = false; els.guide.classList.remove('open'); renderGuide(); }
 
 /* ---------- start (needs one press/tap so the browser allows sound) ---------- */
-const IN_APP = /BSOTV/i.test(navigator.userAgent);    // inside the Bent Steering Fire Stick app
+const IN_APP = !!window.BSO_IN_APP || /BSOTV/i.test(navigator.userAgent);    // inside the Bent Steering Fire Stick or Samsung app
 function goFullscreen() {
   if (IN_APP) return;                                  // the app is already full screen
   const el = document.documentElement;
@@ -581,6 +619,13 @@ els.tuneIn.addEventListener('click', start);
 if (IN_APP) setTimeout(start, 2600);
 // The remote's Back button: close the guide first; otherwise the app goes back home.
 window.bsoBack = () => { if (guideOpen) { closeGuide(); return true; } return false; };
+window.bsoResume = () => { if (started && player && player.playVideo) { player.playVideo(); showBanner(); } };
+// what the TV-engine test reads
+window.bsoProbe = () => {
+  let st = null, t = null, title = null;
+  try { st = player && player.getPlayerState ? player.getPlayerState() : null; t = player && player.getCurrentTime ? Math.round(player.getCurrentTime()) : null; title = player && player.getVideoData ? player.getVideoData().title : null; } catch (e) { st = 'err ' + e.message; }
+  return { page: 'tv', started, channel: chIndex + 1, name: CHANNELS[chIndex] && CHANNELS[chIndex].name, state: st, time: t, title, adbreak: adOn, notice: els.notice.hidden ? null : els.nTitle.textContent };
+};
 
 /* ---------- remote / keyboard ---------- */
 let numBuf = '', numTimer = 0;
@@ -634,11 +679,12 @@ function toggleSound() {
   els.sound.textContent = muted ? 'SOUND ON' : 'MUTE';
   showBanner();
 }
+const keyName = window.bsoKey || ((e) => e.key);
 window.addEventListener('keydown', (e) => {
-  const k = e.key, code = e.keyCode;
+  const k = keyName(e), code = e.keyCode;
   if (started && (k === 'Enter' || code === 23)) goFullscreen();
   if (!started) {
-    if (k === 'Enter' || k === ' ' || code === 23 || code === 179) { e.preventDefault(); start(); }
+    if (k === 'Enter' || k === ' ' || k === 'MediaPlayPause' || k === 'MediaPlay' || code === 23 || code === 179) { e.preventDefault(); start(); }
     return;
   }
   if (guideOpen) {
@@ -646,22 +692,24 @@ window.addEventListener('keydown', (e) => {
     else if (k === 'ArrowDown') guideCursor = Math.min(CHANNELS.length + SETTINGS.length - 1, guideCursor + 1);   // settings below the channels
     else if ((k === 'Enter' || k === ' ') && guideCursor >= CHANNELS.length) SETTINGS[guideCursor - CHANNELS.length].toggle();
     else if (k === 'Enter' || k === ' ') { closeGuide(); tune(guideCursor); }
-    else if (k === 'ArrowLeft' || k === 'Escape' || k === 'Backspace' || k === 'GoBack' || code === 4) closeGuide();
+    else if (k === 'ArrowLeft' || k === 'Escape' || k === 'Backspace' || k === 'GoBack' || k === 'ChannelList' || code === 4) closeGuide();
     else return;
     e.preventDefault(); renderGuide(); return;
   }
   if (k === 'ArrowUp' || k === 'PageUp' || k === 'ChannelUp' || code === 166) tune(chIndex + 1);
   else if (k === 'ArrowDown' || k === 'PageDown' || k === 'ChannelDown' || code === 167) tune(chIndex - 1);
-  else if (k === 'Enter' || k === ' ' || code === 23) openGuide();
+  else if (k === 'Enter' || k === ' ' || k === 'ChannelList' || k === 'ColorF3Blue' || code === 23) openGuide();
   else if (k === 'ArrowLeft') tune(prevIndex);
-  else if (k === 'ArrowRight' || k === 'r') restart();
-  else if (k === 'i') { if (prog && prog.seeked) showInfo(); else showBanner(); }
+  else if (k === 'ArrowRight' || k === 'r' || k === 'ColorF2Yellow' || k === 'MediaTrackPrevious') restart();
+  else if (k === 'i' || k === 'Info') { if (prog && prog.seeked) showInfo(); else showBanner(); }
   else if (k === 'MediaPlayPause' || code === 179 || k === 'p') togglePause();
+  else if (k === 'MediaPlay' || k === 'MediaPause') { if ((player && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING) === (k === 'MediaPause')) togglePause(); }
+  else if (k === 'MediaTrackNext') tune(chIndex + 1);
   else if (k === 'MediaFastForward' || code === 228) { player.seekTo(player.getCurrentTime() + 30, true); showBanner(); }
   else if (k === 'MediaRewind' || code === 227) { player.seekTo(Math.max(0, player.getCurrentTime() - 30), true); showBanner(); }
   else if (k === 'm') toggleSound();
-  else if (k === 'c') toggleCaptions();
-  else if (k === 'z') toggleFill();
+  else if (k === 'c' || k === 'Caption' || k === 'ColorF0Red') toggleCaptions();
+  else if (k === 'z' || k === 'ColorF1Green') toggleFill();
   else if (/^[0-9]$/.test(k)) typeNumber(k);
   else return;
   e.preventDefault();

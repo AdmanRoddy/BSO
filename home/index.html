@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Bent Steering TV — Home</title>
+<script>/* Older smart-TV browsers (2018 Samsung / Chromium 56) are missing a couple of things; add them before anything else runs. */
+(function(){
+if(!String.prototype.padStart){String.prototype.padStart=function(len,pad){var s=String(this);pad=pad===undefined?' ':String(pad);if(s.length>=len||!pad.length)return s;var fill='';while(fill.length<len-s.length)fill+=pad;return fill.slice(0,len-s.length)+s;};}
+if(typeof window.AbortController==='undefined'){window.AbortController=function(){var self=this;this.signal={aborted:false};this.abort=function(){self.signal.aborted=true;};};}
+})();
+</script>
+<script src="../tv.js"></script>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230B1530'/%3E%3Ctext x='32' y='40' text-anchor='middle' font-family='Arial Black,Arial,sans-serif' font-weight='900' font-style='italic' font-size='23' fill='%23FFFFFF'%3EBSO%3C/text%3E%3Crect x='12' y='46' width='40' height='5' rx='2.5' fill='%23E0262F'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira:ital,wght@0,400;0,600;0,700;0,800;1,700;1,800;1,900&family=Saira+Condensed:wght@600;700&display=swap">
@@ -104,6 +111,27 @@ main{flex:1;position:relative;padding:84px 96px 0 110px}
 #setup .go{height:80px;padding:0 44px;border:0;border-radius:40px;background:#fff;color:#0A1638;font-size:32px;font-weight:800;cursor:pointer}
 #setup .back{margin-left:24px;height:80px;padding:0 40px;border:0;border-radius:40px;background:rgba(255,255,255,.08);font-size:30px;font-weight:700;cursor:pointer}
 #setup .go.focus,#setup .back.focus{outline:5px solid var(--red);outline-offset:6px}
+
+/* ===== Fallbacks for 2018-era smart-TV browsers (no CSS grid, inset, clamp, fl/grid gap) — modern browsers skip these ===== */
+@supports not (inset:0){ .layer{top:0;right:0;bottom:0;left:0} }
+@supports not (display:grid){
+  .grid{display:flex;flex-wrap:wrap}
+  .grid .app{margin:0 30px 28px 0}
+}
+@supports not (gap:1px){
+  .rail>*+*{margin-top:20px}
+  .rail>.sep{margin-top:auto}
+  .item>*+*{margin-left:22px}
+  .item>.tag{margin-left:auto}
+  .util>*+*{margin-left:12px}
+  .items>*+*{margin-top:8px}
+  .util{margin:0 12px 12px 0}
+  .clock>*+*{margin-left:14px}
+  .badges>*+*{margin-top:14px}
+  #splash .streaks>*+*{margin-top:34px}
+  #splash .load>*+*{margin-top:18px}
+  #idle .t>*+*{margin-top:6px}
+}
 </style>
 </head>
 <body>
@@ -141,10 +169,10 @@ main{flex:1;position:relative;padding:84px 96px 0 110px}
 
   <section class="layer" id="pics" aria-label="Add pictures">
     <h1>Add pictures</h1>
-    <p>Blueprints and crawler photos stay on this Fire Stick only. On a phone or computer on the same Wi-Fi, open this address and enter the PIN:</p>
+    <p id="pics-text">Blueprints and crawler photos stay on this Fire Stick only. On a phone or computer on the same Wi-Fi, open this address and enter the PIN:</p>
     <div class="addr" id="pics-addr"></div>
     <p class="counts" id="pics-counts"></p>
-    <p>Press Back when you're done.</p>
+    <p id="pics-foot">Press Back when you're done.</p>
   </section>
 
   <section class="layer" id="idle" aria-label="Screensaver">
@@ -169,7 +197,11 @@ main{flex:1;position:relative;padding:84px 96px 0 110px}
 'use strict';
 const $ = (id) => document.getElementById(id);
 const app = window.BSOApp || null;                       // the Fire Stick app's bridge; absent in a browser
-const SITE = 'https://admanroddy.github.io/BSO/';
+const tz = window.bsoTizen && window.bsoTizen.on ? window.bsoTizen : null;   // inside the Samsung TV app
+const keyName = window.bsoKey || ((e) => e.key);
+const withHost = window.bsoWithHost || ((u) => u);
+window.BSO_IS_HOME = true;
+const SITE = window.BSO_SITE || 'https://admanroddy.github.io/BSO/';
 const IDLE_MS = 5 * 60000, SLIDE_MS = 10000, IDLE_SLIDE_MS = 60000;
 
 /* ---------- fit 1920×1080 to the screen ---------- */
@@ -194,30 +226,52 @@ const ICON = {
   home: 'M3 11l9-7 9 7 M5 10v10h14V10',
   update: 'M12 3v12 M7 10l5 5 5-5 M4 20h16',
   amazon: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0 M8 12h8',
+  samsung: 'M3 5h18v11H3z M7 20h10 M12 16v4',
   picture: 'M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15.5 9a1.5 1.5 0 1 0 0.01 0',
 };
 const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${p}"></path></svg>`;
 
 /* ---------- what's on the rail ---------- */
 const RAIL = [
-  { name: 'BSO TV', icon: 'tv', open: () => app ? app.openTv(SITE) : (location.href = SITE) },
-  { name: 'J R-dio', icon: 'radio', open: () => app ? app.openRadio(SITE + 'radio/') : (location.href = SITE + 'radio/') },
-  { name: 'YouTube', icon: 'youtube', pkgs: ['com.amazon.firetv.youtube', 'com.google.android.youtube.tv'], label: 'youtube' },
-  { name: 'Netflix', icon: 'netflix', pkgs: ['com.netflix.ninja'], label: 'netflix' },
-  { name: 'Prime Video', icon: 'prime', pkgs: ['com.amazon.avod', 'com.amazon.firebat', 'com.amazon.avod.thirdpartyclient'], label: 'prime video' },
-  { name: 'Pluto TV', icon: 'pluto', pkgs: ['tv.pluto.android'], label: 'pluto' },
-  { name: 'Spotify', icon: 'spotify', pkgs: ['com.spotify.tv.android', 'com.spotify.music'], label: 'spotify' },
+  { name: 'BSO TV', icon: 'tv', open: () => app ? app.openTv(SITE) : (location.href = withHost(SITE)) },
+  { name: 'J R-dio', icon: 'radio', open: () => app ? app.openRadio(SITE + 'radio/') : (location.href = withHost(SITE + 'radio/')) },
+  // pkgs: Fire TV packages. tz: the names Samsung lists the app under, then Samsung app ids to try if the name isn't found.
+  { name: 'YouTube', icon: 'youtube', pkgs: ['com.amazon.firetv.youtube', 'com.google.android.youtube.tv'], label: 'youtube', tz: { names: ['YouTube'], ids: ['111299001912', '9Ur5IzDKqV.TizenYouTube'] } },
+  { name: 'Netflix', icon: 'netflix', pkgs: ['com.netflix.ninja'], label: 'netflix', tz: { names: ['Netflix'], ids: ['3201907018807', '11101200001', 'org.tizen.netflix-app'] } },
+  { name: 'Prime Video', icon: 'prime', pkgs: ['com.amazon.avod', 'com.amazon.firebat', 'com.amazon.avod.thirdpartyclient'], label: 'prime video', tz: { names: ['Prime Video', 'Amazon Prime Video'], ids: ['3201910019365', '3201512006785'] } },
+  { name: 'Pluto TV', icon: 'pluto', pkgs: ['tv.pluto.android'], label: 'pluto', tz: { names: ['Pluto TV'], ids: ['3201808016802'] } },
+  { name: 'Spotify', icon: 'spotify', pkgs: ['com.spotify.tv.android', 'com.spotify.music'], label: 'spotify', tz: { names: ['Spotify'], ids: ['3201606009684'] } },
   { name: 'All apps', icon: 'grid', open: () => openApps() },
 ];
-let installed = [];        // [{pkg, label}] from the app
-function loadInstalled() { try { installed = app ? JSON.parse(app.apps()) : []; } catch (e) { installed = []; } }
+let installed = [];        // [{pkg, label}] from the app (on the Samsung, pkg is the Samsung app id)
+function loadInstalled() {
+  if (tz) {
+    tz.call('apps').then((list) => {
+      installed = (list || []).map((a) => ({ pkg: a.id, label: a.name || a.id }));
+      if (layer === 'apps') openApps();
+    }).catch(() => {});
+    return;
+  }
+  try { installed = app ? JSON.parse(app.apps()) : []; } catch (e) { installed = []; }
+}
 function findPkg(it) {
   for (const p of it.pkgs || []) if (installed.some((a) => a.pkg === p)) return p;
+  const names = ((it.tz && it.tz.names) || []).map((n) => n.toLowerCase());
+  const exact = installed.find((a) => names.indexOf(a.label.toLowerCase()) >= 0);
+  if (exact) return exact.pkg;
   const hit = it.label && installed.find((a) => a.label.toLowerCase().includes(it.label));
   return hit ? hit.pkg : null;
 }
 function openItem(it) {
   if (it.open) { it.open(); return; }
+  if (tz) {
+    const ids = [findPkg(it)].concat((it.tz && it.tz.ids) || []).filter(Boolean);
+    tz.call('launch', { ids }).catch(() => {
+      toast(it.name + " isn't on this TV yet — opening Samsung Apps");
+      tz.tell('store', { id: ((it.tz && it.tz.ids) || [])[0] || '' });
+    });
+    return;
+  }
   if (!app) { toast(it.name + ' opens on the Fire Stick'); return; }
   const pkg = findPkg(it);
   if (pkg && app.launch(pkg)) return;
@@ -227,7 +281,15 @@ function openItem(it) {
 
 /* ---------- utility buttons (bottom of the rail) ---------- */
 let update = null;
+const setupDone = () => { try { return localStorage.getItem('bso:samsungSetup') === '1'; } catch (e) { return false; } };
 function utilList() {
+  if (tz) {
+    const u = [{ name: 'Add pictures', icon: 'picture', open: () => openPics() }];
+    if (!setupDone()) u.unshift({ name: 'Make home', icon: 'home', alert: true, open: () => openSetup() });
+    if (update) u.unshift({ name: 'Update ' + update.version, icon: 'update', alert: true, open: () => toast('Run the Bent Steering installer on your computer again to update') });
+    u.push({ name: 'Samsung TV', icon: 'samsung', open: () => tz.tell('hide') });
+    return u;
+  }
   const u = [{ name: 'Settings', icon: 'settings', open: () => app ? app.openSettings() : toast('Fire TV settings open on the Fire Stick') }];
   if (app) u.push({ name: 'Add pictures', icon: 'picture', open: () => openPics() });
   if (app && !app.homeOverride()) u.unshift({ name: 'Make home', icon: 'home', alert: true, open: () => openSetup() });
@@ -281,12 +343,38 @@ setInterval(tick, 5000); tick();
 
 /* ---------- blueprints + badges (private files on the Fire Stick, never on the website) ---------- */
 let bps = [], bag = [], lastBp = '';
+// Samsung: 'kind/name' -> picture address, keeping only the last few in memory
+const picCache = new Map();
+function picUrl(key) {
+  if (!tz) return Promise.resolve(key);
+  if (picCache.has(key)) return Promise.resolve(picCache.get(key));
+  const i = key.indexOf('/');
+  return tz.call('readSaved', { kind: key.slice(0, i), name: key.slice(i + 1) }, 60000).then((blob) => {
+    const u = URL.createObjectURL(blob);
+    picCache.set(key, u);
+    while (picCache.size > 12) { const k0 = picCache.keys().next().value; URL.revokeObjectURL(picCache.get(k0)); picCache.delete(k0); }
+    return u;
+  });
+}
+function showBadges(keys) {
+  $('badges').innerHTML = '';
+  for (const k of keys) { const im = document.createElement('img'); im.alt = ''; $('badges').appendChild(im); picUrl(k).then((u) => { im.src = u; }).catch(() => {}); }
+}
 function loadPrivate() {
+  if (tz) {
+    Promise.all([tz.call('listSaved', { kind: 'blueprints' }), tz.call('listSaved', { kind: 'badges' })]).then((r) => {
+      const had = bps.length;
+      bps = r[0].map((n) => 'blueprints/' + n);
+      showBadges(r[1].slice(0, 3).map((n) => 'badges/' + n));
+      $('idle-logo').hidden = !!bps.length;
+      $('empty-bp').hidden = !!bps.length;
+      if (bps.length && !had) runSlides();
+    }).catch(() => {});
+    return;
+  }
   const list = (kind) => { try { return app ? JSON.parse(app.files(kind)) : []; } catch (e) { return []; } };
   bps = list('blueprints').map((n) => 'https://bso.local/blueprints/' + encodeURIComponent(n));
-  const badges = list('badges').slice(0, 3);
-  $('badges').innerHTML = '';
-  for (const n of badges) { const im = document.createElement('img'); im.alt = ''; im.src = 'https://bso.local/badges/' + encodeURIComponent(n); $('badges').appendChild(im); }
+  showBadges(list('badges').slice(0, 3).map((n) => 'https://bso.local/badges/' + encodeURIComponent(n)));
   $('idle-logo').hidden = !!bps.length;
   $('empty-bp').hidden = !app || !!bps.length;
 }
@@ -300,12 +388,14 @@ function nextBp() {
   return (lastBp = bag.pop());
 }
 function slide(boxId) {
-  const url = nextBp(); if (!url) return;
-  const imgs = $(boxId).querySelectorAll('img');
-  const back = imgs[0].classList.contains('on') ? imgs[1] : imgs[0], front = back === imgs[0] ? imgs[1] : imgs[0];
-  const pre = new Image();
-  pre.onload = pre.onerror = () => { back.src = url; back.classList.add('on'); front.classList.remove('on'); };
-  pre.src = url;
+  const key = nextBp(); if (!key) return;
+  picUrl(key).then((url) => {
+    const imgs = $(boxId).querySelectorAll('img');
+    const back = imgs[0].classList.contains('on') ? imgs[1] : imgs[0], front = back === imgs[0] ? imgs[1] : imgs[0];
+    const pre = new Image();
+    pre.onload = pre.onerror = () => { back.src = url; back.classList.add('on'); front.classList.remove('on'); };
+    pre.src = url;
+  }).catch(() => {});
 }
 let slideTimer = 0;
 function runSlides() {
@@ -325,14 +415,15 @@ function toast(t) { const el = $('toast'); el.textContent = t; el.classList.add(
 let appFocus = 0, appList = [];
 function openApps() {
   loadInstalled();
-  appList = installed.filter((a) => a.pkg !== 'com.bentsteering.tv').sort((a, b) => a.label.localeCompare(b.label));
-  if (!app) appList = RAIL.slice(2, 7).map((it) => ({ pkg: '', label: it.name }));
+  appList = installed.filter((a) => a.pkg !== 'com.bentsteering.tv' && !/^BSOffroad1\./.test(a.pkg)).sort((a, b) => a.label.localeCompare(b.label));
+  if (!app && !tz) appList = RAIL.slice(2, 7).map((it) => ({ pkg: '', label: it.name }));
   const g = $('grid'); g.innerHTML = '';
   appList.forEach((a, i) => {
     const b = document.createElement('button');
     b.className = 'app'; b.type = 'button';
     b.innerHTML = '<span></span>'; b.querySelector('span').textContent = a.label;
     if (app && a.pkg) { const art = app.banner(a.pkg); if (art) { b.style.backgroundImage = 'url(' + art + ')'; b.classList.add('has-art'); } }
+    else if (tz && a.pkg) tz.call('icon', { id: a.pkg }).then((art) => { if (art) { b.style.backgroundImage = 'url(' + art + ')'; b.style.backgroundSize = 'auto 62%'; b.style.backgroundPosition = 'center 28%'; } }).catch(() => {});
     b.addEventListener('click', () => { appFocus = i; launchApp(a); });
     g.appendChild(b);
   });
@@ -344,25 +435,160 @@ function renderApps() {
   const row = Math.floor(appFocus / 5);
   $('grid').style.transform = `translateY(${-Math.max(0, row - 3) * 208}px)`;
 }
-function launchApp(a) { if (app && a.pkg) app.launch(a.pkg); else toast(a.label + ' opens on the Fire Stick'); }
+function launchApp(a) {
+  if (tz && a.pkg) tz.call('launch', { ids: [a.pkg] }).catch(() => toast("Couldn't open " + a.label));
+  else if (app && a.pkg) app.launch(a.pkg);
+  else toast(a.label + ' opens on the Fire Stick');
+}
 
 // setup
 let setupFocus = 0;
 function openSetup() { layer = 'setup'; setupFocus = 0; show('setup', true); renderSetup(); }
 function renderSetup() { $('setup-go').classList.toggle('focus', setupFocus === 0); $('setup-back').classList.toggle('focus', setupFocus === 1); }
-$('setup-go').addEventListener('click', () => app ? app.openAccessibility() : toast('This opens Fire TV settings on the Fire Stick'));
+$('setup-go').addEventListener('click', () => {
+  if (tz) { try { localStorage.setItem('bso:samsungSetup', '1'); } catch (e) { /* storage off */ } closeLayer(); toast('Bent Steering will start with the TV'); return; }
+  if (app) app.openAccessibility(); else toast('This opens Fire TV settings on the Fire Stick');
+});
+if (tz) {
+  const st = $('setup');
+  st.querySelector('h1').textContent = 'Start Bent Steering with the TV';
+  st.querySelector('p').textContent = 'Samsung TVs can reopen the last app you used when they turn on. Switch that on once:';
+  st.querySelector('ol').innerHTML = '<li>Press <b>Home</b> on the remote and open <b>Settings</b>.</li>'
+    + '<li>Go to <b>General › Smart Features</b>. Turn <b>Autorun Last App</b> on and <b>Autorun Smart Hub</b> off.</li>'
+    + '<li>Finish on Bent Steering before you turn the TV off, and it starts here next time.</li>';
+  $('setup-go').textContent = 'Done it';
+}
 $('setup-back').addEventListener('click', () => closeLayer());
 
 // add pictures
 let picsT = 0;
 function openPics() {
   layer = 'pics'; show('pics', true);
+  if (tz) { tzPicsIntro(); return; }
   const addr = app.pictureAddress();
   $('pics-addr').innerHTML = '';
   if (addr) { $('pics-addr').append(addr.replace('http://', '') + '   PIN '); const pn = document.createElement('span'); pn.className = 'pin'; pn.textContent = app.picturePin(); $('pics-addr').append(pn); }
   else $('pics-addr').textContent = 'Connect the Fire Stick to Wi-Fi first';
   const count = () => { loadPrivate(); const b = JSON.parse(app.files('badges')).length; $('pics-counts').textContent = bps.length + ' BLUEPRINTS  ·  ' + b + ' CRAWLER PHOTOS ON THE STICK'; };
   count(); clearInterval(picsT); picsT = setInterval(count, 3000);
+}
+
+/* ---------- Samsung: pictures from a USB stick, tidied here, kept in the TV app ---------- */
+let tzBusy = false, tzClearArm = 0;
+function tzCounts() {
+  Promise.all([tz.call('listSaved', { kind: 'blueprints' }), tz.call('listSaved', { kind: 'badges' })]).then((r) => {
+    $('pics-counts').textContent = r[0].length + (r[0].length === 1 ? ' BLUEPRINT' : ' BLUEPRINTS') + '  ·  ' + r[1].length + (r[1].length === 1 ? ' CRAWLER PHOTO' : ' CRAWLER PHOTOS') + ' ON THE TV';
+  }).catch(() => {});
+}
+function tzPicsIntro() {
+  $('pics-text').textContent = 'Your blueprints come built into this app. To add more, copy them onto a USB stick (folders are fine), plug it into the TV, then press OK. Pictures in a folder named Crawlers go with the crawler photos. They stay on this TV only.';
+  if (!tzBusy) $('pics-addr').textContent = 'Press OK to copy from the USB stick';
+  $('pics-foot').textContent = "Press Back when you're done  ·  Red button: clear the pictures on the TV";
+  tzCounts();
+}
+const extOf = (name) => { const m = /\.(jpe?g|png|webp|gif|bmp)$/i.exec(name); return m ? '.' + m[1].toLowerCase() : '.jpg'; };
+// More than 4% clearly coloured pixels: a photo or logo, not a blueprint (same test as the Fire Stick app).
+function colorful(d) {
+  const w = d.width, h = d.height, p = d.data, step = Math.max(1, Math.floor(Math.min(w, h) / 160));
+  let n = 0, hits = 0;
+  for (let y = 0; y < h; y += step) for (let x = 0; x < w; x += step) {
+    const i = (y * w + x) * 4, mx = Math.max(p[i], p[i + 1], p[i + 2]), mn = Math.min(p[i], p[i + 1], p[i + 2]);
+    n++;
+    if (mx > 0 && (mx - mn) / mx > 0.35 && mx / 255 > 0.25) hits++;
+  }
+  return n > 0 && hits * 100 > n * 4;
+}
+// Light lines on a dark or white screenshot -> white lines on see-through, trimmed to the drawing.
+function lineArt(d) {
+  const w = d.width, h = d.height, p = d.data;
+  const lum = (i) => ((p[i] * 299 + p[i + 1] * 587 + p[i + 2] * 114) / 1000) | 0;
+  const m = Math.max(1, Math.floor(Math.min(w, h) / 200)), edge = [];
+  for (let x = 0; x < w; x += m) edge.push(lum(x * 4), lum(((h - 1) * w + x) * 4));
+  for (let y = 0; y < h; y += m) edge.push(lum(y * w * 4), lum((y * w + w - 1) * 4));
+  edge.sort((a, b) => a - b);
+  const bg = edge[edge.length >> 1], darkBg = bg < 128, span = Math.max(24, darkBg ? 255 - bg : bg);
+  let minX = w, minY = h, maxX = -1, maxY = -1;
+  for (let i = 0, j = 0; i < w * h; i++, j += 4) {
+    const l = ((p[j] * 299 + p[j + 1] * 587 + p[j + 2] * 114) / 1000) | 0;
+    let a = darkBg ? ((l - bg) * 255 / span) | 0 : ((bg - l) * 255 / span) | 0;
+    a = a < 12 ? 0 : Math.min(255, (a * 1.15) | 0);
+    p[j] = 255; p[j + 1] = 255; p[j + 2] = 255; p[j + 3] = a;
+    if (a > 40) { const x = i % w, y = (i / w) | 0; if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  }
+  if (maxX < 0) return null;
+  const pad = Math.max(4, Math.floor(Math.min(w, h) / 60));
+  minX = Math.max(0, minX - pad); minY = Math.max(0, minY - pad); maxX = Math.min(w - 1, maxX + pad); maxY = Math.min(h - 1, maxY + pad);
+  const cw = maxX - minX + 1, ch = maxY - minY + 1, cut = new ImageData(cw, ch);
+  for (let y = 0; y < ch; y++) cut.data.set(p.subarray(((y + minY) * w + minX) * 4, ((y + minY) * w + minX + cw) * 4), y * cw * 4);
+  return cut;
+}
+function tidyPicture(blob, name, isCrawler) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob), im = new Image();
+    im.onerror = () => { URL.revokeObjectURL(url); reject(new Error('unreadable')); };
+    im.onload = () => {
+      URL.revokeObjectURL(url);
+      try {
+        const base = (name.replace(/\.[^.]+$/, '').replace(/[^\w .-]+/g, '_').slice(0, 80)) || ('picture-' + Date.now());
+        const big = Math.max(im.naturalWidth, im.naturalHeight) || 1;
+        const sc = Math.min(1, 2000 / big), w = Math.max(1, Math.round(im.naturalWidth * sc)), h = Math.max(1, Math.round(im.naturalHeight * sc));
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        const cx = cv.getContext('2d'); cx.drawImage(im, 0, 0, w, h);
+        const data = cx.getImageData(0, 0, w, h);
+        if (isCrawler || colorful(data)) {
+          // a photo: keep it as a photo, just small enough for the screen
+          const s2 = Math.min(1, 1280 / big), c2 = document.createElement('canvas');
+          c2.width = Math.max(1, Math.round(im.naturalWidth * s2)); c2.height = Math.max(1, Math.round(im.naturalHeight * s2));
+          c2.getContext('2d').drawImage(im, 0, 0, c2.width, c2.height);
+          c2.toBlob((b) => resolve({ kind: 'badges', name: base + '.jpg', blob: b || blob }), 'image/jpeg', 0.88);
+          return;
+        }
+        const cut = lineArt(data);
+        if (!cut) { resolve({ kind: 'blueprints', name: base + extOf(name), blob }); return; }
+        const out = document.createElement('canvas'); out.width = cut.width; out.height = cut.height;
+        out.getContext('2d').putImageData(cut, 0, 0);
+        out.toBlob((b) => (b ? resolve({ kind: 'blueprints', name: base + '.png', blob: b }) : reject(new Error('png'))), 'image/png');
+      } catch (e) { reject(e); }
+    };
+    im.src = url;
+  });
+}
+async function tzImport() {
+  if (tzBusy) return;
+  tzBusy = true;
+  const status = (t) => { $('pics-addr').textContent = t; };
+  try {
+    status('Looking for the USB stick…');
+    const files = await tz.call('usbList', {}, 90000);
+    if (!files.length) { status('No pictures found. Is the USB stick plugged in?'); return; }
+    let bp = 0, bd = 0, bad = 0;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      status('Copying ' + (i + 1) + ' of ' + files.length + '…');
+      try {
+        const blob = await tz.call('readFile', { path: f.path }, 120000);
+        const out = await tidyPicture(blob, f.name, /crawler|badge/i.test(f.folder || ''));
+        await tz.call('saveFile', { kind: out.kind, name: out.name, blob: out.blob }, 120000);
+        if (out.kind === 'badges') bd++; else bp++;
+      } catch (e) { bad++; }
+      if (i % 5 === 4) tzCounts();
+    }
+    const n = (x, one, many) => x + ' ' + (x === 1 ? one : many);
+    status('Done: ' + n(bp, 'blueprint', 'blueprints') + ', ' + n(bd, 'crawler photo', 'crawler photos') + (bad ? ', ' + bad + " couldn't be read" : ''));
+    bag = []; loadPrivate();
+  } catch (e) {
+    status("Couldn't read the USB stick");
+  } finally { tzBusy = false; tzCounts(); }
+}
+function tzClear() {
+  if (tzBusy) return;
+  if (Date.now() - tzClearArm > 4000) { tzClearArm = Date.now(); $('pics-addr').textContent = 'Press red again to remove the pictures loaded from USB'; return; }
+  tzClearArm = 0;
+  Promise.all([tz.call('clearSaved', { kind: 'blueprints' }), tz.call('clearSaved', { kind: 'badges' })]).then(() => {
+    picCache.forEach((u) => URL.revokeObjectURL(u)); picCache.clear(); bps = []; bag = [];
+    $('pics-addr').textContent = 'USB pictures removed (the ones built into the app stay)'; loadPrivate(); tzCounts();
+    ['bp', 'idle-bp'].forEach((id) => $(id).querySelectorAll('img').forEach((im) => { im.classList.remove('on'); im.removeAttribute('src'); }));
+  }).catch(() => { $('pics-addr').textContent = "Couldn't clear the pictures"; });
 }
 
 function closeLayer() { if (layer === 'pics') { clearInterval(picsT); loadPrivate(); bag = []; runSlides(); } if (layer) show(layer, false); layer = null; render(); }
@@ -386,7 +612,7 @@ addEventListener('keydown', (e) => {
   poke();
   if (wake()) { e.preventDefault(); return; }                 // any button just wakes the screen
   if ($('splash').classList.contains('show')) { $('splash').classList.remove('show'); }
-  const k = e.key;
+  const k = keyName(e);
   const back = k === 'Escape' || k === 'Backspace' || k === 'GoBack' || k === 'BrowserBack';
   if (layer === 'apps') {
     const n = appList.length;
@@ -400,6 +626,8 @@ addEventListener('keydown', (e) => {
     e.preventDefault(); if (layer === 'apps') renderApps(); return;
   }
   if (layer === 'pics') {
+    if (tz && (k === 'Enter' || k === ' ')) { tzImport(); e.preventDefault(); return; }
+    if (tz && k === 'ColorF0Red') { tzClear(); e.preventDefault(); return; }
     if (back || k === 'Enter') { closeLayer(); e.preventDefault(); }
     return;
   }
@@ -426,9 +654,24 @@ addEventListener('pointerdown', () => { poke(); wake(); });
 window.bsoBack = () => { if (wake()) return true; if (layer) { closeLayer(); return true; } return false; };
 window.bsoSplash = () => { splash(); poke(); };
 window.bsoResume = () => { loadInstalled(); loadPrivate(); render(); poke(); runSlides(); checkUpdate(); };
+// what the TV-engine test reads
+window.bsoProbe = () => ({ page: 'home', host: tz ? 'tizen' : app ? 'firetv' : 'web', focus, layer, installed: installed.length,
+  rail: [...$('items').children].map((b) => b.textContent), utils: utils.map((u) => u.name), blueprints: bps.length,
+  apps: appList.length, pics: $('pics-addr').textContent, toast: $('toast').classList.contains('show') ? $('toast').textContent : null });
 
 /* ---------- app updates ---------- */
+const newer = (a, b) => { const x = String(a).split('.'), y = String(b).split('.'); for (let i = 0; i < 3; i++) { const p = +x[i] || 0, q = +y[i] || 0; if (p !== q) return p > q; } return false; };
 async function checkUpdate() {
+  if (tz) {
+    try {
+      const mine = await tz.call('version');
+      const r = await fetch(SITE + 'samsung/version.json?t=' + Date.now());
+      const v = await r.json();
+      update = newer(v.version, mine) ? v : null;
+      render();
+    } catch (e) { /* offline: try again later */ }
+    return;
+  }
   if (!app) return;
   try {
     const r = await fetch(SITE + 'app/version.json?t=' + Date.now(), { cache: 'no-store' });

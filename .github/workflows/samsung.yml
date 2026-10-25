@@ -1,0 +1,89 @@
+name: Samsung app
+
+# Two checks for the Bent Steering Samsung TV app (tizen/):
+#  - build: packages and signs the app WITHOUT any pictures, to make sure the build still works.
+#    Josh's own copy, with his blueprints, is built in his private bso-blueprints repository.
+#  - tv-engine: runs the app on Chromium 56 (the 2018 Samsung TV's web engine) against the live
+#    website, with real YouTube and radio, and saves screenshots.
+# Results go to the ci-log branch (samsung/) so they can be read without signing in.
+on:
+  push:
+    branches: [main]
+    paths: ['tizen/**', 'tvtest/**', '.github/workflows/samsung.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: samsung
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the app and installer (no pictures)
+        run: |
+          set -o pipefail
+          bash tizen/build.sh tizen/app out 2>&1 | tee build.log
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: Bent-Steering-Samsung-test
+          path: out/
+          retention-days: 3
+      - name: Save the log
+        if: always()
+        run: |
+          mkdir -p /tmp/res && cp build.log /tmp/res/build.log 2>/dev/null || echo "no log" > /tmp/res/build.log
+          echo "${{ job.status }}" > /tmp/res/build-status.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: build-log
+          path: /tmp/res/
+
+  tv-engine:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Libraries for the old engine
+        run: sudo apt-get update -q && sudo apt-get install -y -q xvfb libgtk2.0-0 libgconf-2-4 libnss3 libxss1 libasound2 > /dev/null
+      - name: Wait for the website to have this commit's pages
+        run: |
+          want="$(sha1sum tv.js | cut -c1-40)"
+          for i in $(seq 1 40); do
+            got="$(curl -fsSL "https://admanroddy.github.io/BSO/tv.js?t=$RANDOM$i" | sha1sum | cut -c1-40)" || true
+            [ "$got" = "$want" ] && { echo "live after $((i*15))s"; exit 0; }
+            sleep 15
+          done
+          echo "the website didn't update in 10 minutes; testing what's there"
+      - name: Run the app on Chromium 56
+        run: bash tvtest/run.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: tv-engine
+          path: tvtest/out/
+
+  results:
+    needs: [build, tv-engine]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: res
+      - name: Publish the logs and screenshots to the ci-log branch
+        run: |
+          rm -rf res/Bent-Steering-Samsung-test   # the app itself stays an artifact only
+          git init -q pub && cd pub
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git"
+          git fetch -q --depth 1 origin ci-log && git checkout -q ci-log || git checkout -q --orphan ci-log
+          rm -rf samsung && mkdir -p samsung && cp -r ../res/* samsung/
+          echo "run ${{ github.run_number }} at $(date -u)" > samsung/RUN.txt
+          git add -A samsung && git commit -qm "Samsung app checks, run ${{ github.run_number }}" && git push -q origin HEAD:ci-log
