@@ -1,0 +1,12 @@
+YT api ready
+YT player ready
+YT error 150
+YT state -1
+YT tick state -1 t=0.0 title=Me at the zoo
+YT tick state -1 t=0.0 title=Me at the zoo
+YT tick state -1 t=0.0 title=Me at the zoo
+YT tick state -1 t=0.0 title=Me at the zoo
+YT tick state -1 t=0.0 title=Me at the zoo
+YT tick state -1 t=0.0 title=Me at the zoo
+YT tick state -1 t=0.0 title=Me at the zoo
+YT tick state -1 t=0.0 title=Me at the zoo

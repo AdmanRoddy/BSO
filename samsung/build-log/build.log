@@ -1,7 +1,7 @@
 == Tizen Studio command line tools 4.5.1
 Tizen CLI 2.5.25
 == signing certificate (a fresh author certificate each build; the installer handles the swap)
-::add-mask::b75eeb9323067218f9e7ef01
+::add-mask::54f1890b2fcf19733a6bcd20
 No path option. Will be generated on '/home/runner/tizen-studio-data/keystore/author'.
 Created the working directory.
 Working path: /home/runner/tizen-studio-data/keystore/author
@@ -33,43 +33,42 @@ If want to sign by this, add the file of security profiles in CLI configuration
 
 BUILD SUCCESSFUL
 
-Output path : /tmp/tmp.ygHQxEccMi/app/.buildResult
+Output path : /tmp/tmp.b7OYBvD8TU/app/.buildResult
 Excluded : [.*, *.md, build.sh, .build/*, .build, .sign/*, .sign, webUnitTest/*, webUnitTest, .externalToolBuilders/*, .externalToolBuilders, .buildResult/*, .buildResult, .settings/*, .settings, .package/*, .package, .tproject, .project, .sdk_delta.info, .rds_delta, *.wgt, .tizen-ui-builder-tool.xml]
-Total time: 00:00:00.276
-spawn /home/runner/tizen-studio/tools/ide/bin/tizen package -t wgt -o /tmp/tmp.ygHQxEccMi/out -s BSO -- .buildResult
-Author password: b75eeb9323067218f9e7ef01
-
+Total time: 00:00:00.389
+spawn /home/runner/tizen-studio/tools/ide/bin/tizen package -t wgt -o /tmp/tmp.b7OYBvD8TU/out -s BSO -- .buildResult
+Author password: 
 Save author password
 Yes: (Y), No: (N) ?N
 Author certficate: /home/runner/tizen-studio-data/keystore/author/bso-author.p12
 Distributor1 certificate : /home/runner/tizen-studio/tools/certificate-generator/certificates/distributor/tizen-distributor-signer.p12
 Excludes File Pattern: {.manifest.tmp, .delta.lst}
-Ignore File: /tmp/tmp.ygHQxEccMi/app/.buildResult/.manifest.tmp
-Package File Location: /tmp/tmp.ygHQxEccMi/out/Bent Steering.wgt
-     4863  2026-10-25 19:11   author-signature.xml
-     1533  2026-10-25 19:11   config.xml
-     1718  2026-10-25 19:11   index.html
-    17707  2026-10-25 19:11   shell.js
-     4847  2026-10-25 19:11   signature1.xml
+Ignore File: /tmp/tmp.b7OYBvD8TU/app/.buildResult/.manifest.tmp
+Package File Location: /tmp/tmp.b7OYBvD8TU/out/Bent Steering.wgt
+     4863  2026-10-25 19:17   author-signature.xml
+     1533  2026-10-25 19:17   config.xml
+     1718  2026-10-25 19:17   index.html
+    17707  2026-10-25 19:17   shell.js
+     4847  2026-10-25 19:17   signature1.xml
    560148                     7 files
 == sdb for Windows (Samsung's TV connection tool)
 sdb package: /binary/sdb_4.2.36_windows-64.zip
-/tmp/tmp.ygHQxEccMi/sdb
-/tmp/tmp.ygHQxEccMi/sdb/remove.BAT
-/tmp/tmp.ygHQxEccMi/sdb/pkginfo.manifest
-/tmp/tmp.ygHQxEccMi/sdb/changelog
-/tmp/tmp.ygHQxEccMi/sdb/data
-/tmp/tmp.ygHQxEccMi/sdb/data/tools
-/tmp/tmp.ygHQxEccMi/sdb/data/tools/ANSI32.dll
-/tmp/tmp.ygHQxEccMi/sdb/data/tools/sdb.exe
-/tmp/tmp.ygHQxEccMi/sdb/data/tools/sdb-run.bat
-/tmp/tmp.ygHQxEccMi/sdb/data/tools/ansicon.exe
-/tmp/tmp.ygHQxEccMi/sdb/install.BAT
+/tmp/tmp.b7OYBvD8TU/sdb
+/tmp/tmp.b7OYBvD8TU/sdb/remove.BAT
+/tmp/tmp.b7OYBvD8TU/sdb/pkginfo.manifest
+/tmp/tmp.b7OYBvD8TU/sdb/changelog
+/tmp/tmp.b7OYBvD8TU/sdb/data
+/tmp/tmp.b7OYBvD8TU/sdb/data/tools
+/tmp/tmp.b7OYBvD8TU/sdb/data/tools/ANSI32.dll
+/tmp/tmp.b7OYBvD8TU/sdb/data/tools/sdb.exe
+/tmp/tmp.b7OYBvD8TU/sdb/data/tools/sdb-run.bat
+/tmp/tmp.b7OYBvD8TU/sdb/data/tools/ansicon.exe
+/tmp/tmp.b7OYBvD8TU/sdb/install.BAT
 == installer zip
 total 2964
-drwxr-xr-x  2 runner runner    4096 Oct 25 19:11 .
-drwxr-xr-x 10 runner runner    4096 Oct 25 19:11 ..
--rw-r--r--  1 runner runner 2477805 Oct 25 19:11 Bent-Steering-Samsung-Installer.zip
--rw-r--r--  1 runner runner  540839 Oct 25 19:11 BentSteering.wgt
--rw-r--r--  1 runner runner      20 Oct 25 19:11 version.json
+drwxr-xr-x  2 runner runner    4096 Oct 25 19:18 .
+drwxr-xr-x 10 runner runner    4096 Oct 25 19:17 ..
+-rw-r--r--  1 runner runner 2477802 Oct 25 19:18 Bent-Steering-Samsung-Installer.zip
+-rw-r--r--  1 runner runner  540839 Oct 25 19:17 BentSteering.wgt
+-rw-r--r--  1 runner runner      20 Oct 25 19:18 version.json
 built Bent Steering 1.0.0
