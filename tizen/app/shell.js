@@ -21,6 +21,15 @@
   var off = document.getElementById('off');
   var btns = document.getElementById('btns');
 
+  // The key layout is also set from here, in case the TV ignores the stylesheet.
+  function place(el, css) { for (var k in css) el.style[k] = css[k]; }
+  place(document.documentElement, { width: '100%', height: '100%', margin: '0', background: '#05091A', overflow: 'hidden' });
+  place(document.body, { width: '100%', height: '100%', margin: '0', background: '#05091A', overflow: 'hidden' });
+  place(frame, { position: 'absolute', top: '0', left: '0', width: '100%', height: '100%', border: '0', background: '#05091A', visibility: 'hidden' });
+  place(boot, { position: 'absolute', top: '0', left: '0', right: '0', bottom: '0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#05091A' });
+  try { place(boot.querySelector('img'), { width: '900px' }); } catch (e) { /* no logo */ }
+  function showBoot(on) { boot.style.display = on ? 'flex' : 'none'; }
+
   var hasTizen = typeof window.tizen !== 'undefined';
   var me = null;
   try { me = hasTizen ? tizen.application.getCurrentApplication() : null; } catch (e) { me = null; }
@@ -65,15 +74,15 @@
     var first = !ready;
     ready = true; page = p || '';
     clearTimeout(loadTimer); clearTimeout(retryTimer);
-    boot.className = 'gone'; off.className = ''; frame.className = 'on';
+    boot.className = 'gone'; off.className = ''; frame.className = 'on'; showBoot(false); frame.style.visibility = 'visible';
     focusFrame();
     screenSaver(/\/home\//.test(page));          // Samsung's screen saver stays off during shows and radio
     if (first) log('site ready: ' + page);
   }
   function offline() {
     ready = false;
-    frame.className = '';
-    boot.className = '';
+    frame.className = ''; frame.style.visibility = 'hidden';
+    boot.className = ''; showBoot(true);
     msg.textContent = 'No internet';
     off.className = 'on';
     renderOffline();

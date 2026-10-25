@@ -11,6 +11,8 @@
     <!-- BSO TV and J R-dio load from the website, and they reach YouTube and radio stations all over -->
     <access origin="*" subdomains="true"/>
     <tizen:allow-navigation>*</tizen:allow-navigation>
+    <!-- the TV's default rules block inline styles; allow what the app needs -->
+    <tizen:content-security-policy>default-src * 'self' data: blob: filesystem:; script-src 'self' 'unsafe-inline' 'unsafe-eval' *; style-src 'self' 'unsafe-inline' *; img-src * 'self' data: blob: file: filesystem:; media-src * blob: data:; connect-src *; frame-src *; font-src * data:</tizen:content-security-policy>
     <tizen:privilege name="http://tizen.org/privilege/internet"/>
     <tizen:privilege name="http://tizen.org/privilege/application.launch"/>
     <tizen:privilege name="http://tizen.org/privilege/application.info"/>
