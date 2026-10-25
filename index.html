@@ -279,6 +279,7 @@ const bad = new Set(store.get('bad2', []));
 const skipped = new Set();               // this visit only: videos that failed for other reasons
 const PERMANENT_ERR = { 100: 1, 101: 1, 150: 1 };
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const TOUCH = IOS || /Android|Mobi/i.test(navigator.userAgent);
 let unlocked = false;                    // iPad/iPhone: YouTube's player has had its one tap
 const DEBUG = /[?&]debug\b/.test(location.search);
 const dbgLines = [];
@@ -313,6 +314,9 @@ function liveOffset(dur) {
 // rebuilds the player and picks the same video back up where it was.
 function makePlayer() {
   const vars = { autoplay: 0, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, rel: 0, playsinline: 1, origin: location.origin };
+  // Phones and tablets: with YouTube's controls off, its pause button stays on the picture for good;
+  // with them on, it fades a few seconds in (the control bar sits off-screen anyway).
+  if (TOUCH && !IN_APP) vars.controls = 1;
   if (ccOn) Object.assign(vars, { cc_load_policy: 1, cc_lang_pref: 'en' });
   player = new YT.Player('player', { width: '100%', height: '100%', playerVars: vars, events: { onReady, onStateChange, onError } });
 }
@@ -366,7 +370,7 @@ function captionsOff() {
 }
 // Show the picture once YouTube's own play button and title have faded (they flash for a moment
 // whenever a video starts or jumps), unless a commercial break is covering the screen.
-const REVEAL_DELAY = 2000;
+const REVEAL_DELAY = TOUCH ? 3500 : 2000;     // phones/tablets: YouTube's controls take longer to fade
 function reveal() { if (!adOn) els.stat.classList.remove('on'); }
 
 function onReady() {
