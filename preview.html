@@ -22,7 +22,8 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
 #player,#stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
 #touch{position:fixed;inset:0;touch-action:none}
 
-.bug{position:fixed;right:3rem;top:2.5rem;width:13rem;opacity:.42;pointer-events:none}
+.bug{position:fixed;right:3rem;top:2.5rem;width:13rem;opacity:0;pointer-events:none;transition:opacity .35s ease}
+body.ui .bug{opacity:.42}      /* the logo shows with the info banner, not over the show */
 
 /* boot */
 #boot{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;overflow:hidden}
@@ -68,7 +69,7 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
 .ch-btns button.wide{width:auto;padding:0 1.4rem;border-radius:2rem;font-family:'Saira Condensed',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:.16em}
 .ch-btns svg{width:1.6rem;height:1.6rem}
 .ch-btns button.on{background:#fff;color:#0A1638}
-.row.setting{margin-top:1rem;box-shadow:inset 0 1px 0 var(--line);border-radius:0 0 .9rem .9rem}
+.row.setting.first{margin-top:1rem;box-shadow:inset 0 1px 0 var(--line)}
 .row .state{flex:0 0 auto;padding:.1rem .55rem;border-radius:.35rem;background:rgba(255,255,255,.14);font-family:'Saira Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.16em}
 .row .state.on{background:var(--blue);color:#fff}
 .hint{position:fixed;right:3.5rem;bottom:calc(3rem + 11.5rem);z-index:5;font-family:'Saira Condensed',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:.14em;color:var(--muted);
@@ -259,13 +260,22 @@ window.onYouTubeIframeAPIReady = () => { apiReady = true; makePlayer(); };
 // (widescreen vs. old 4:3 TV), which YouTube's public oEmbed lookup gives.
 let aspect = 16 / 9;
 const aspects = new Map(store.get('ar', []));
+let fillOn = store.get('fill', true) !== false;   // Picture: FILL (no black bars on a TV) or FIT (whole picture)
 function fitStage() {
   const f = $('player');
   if (!f) return;
   const W = window.innerWidth, H = window.innerHeight;
   const pad = Math.round(Math.max(90, H * 0.14));
-  const w = Math.min(W, Math.round(H * aspect));          // picture width once fitted to the screen
-  Object.assign(f.style, { left: Math.round((W - w) / 2) + 'px', top: -pad + 'px', right: 'auto', bottom: 'auto', width: w + 'px', height: (H + 2 * pad) + 'px' });
+  // FILL zooms the picture to cover a landscape screen (old 4:3 shows lose a little off the top and
+  // bottom); a phone held upright always fits, since covering it would crop most of the picture.
+  const cover = fillOn && W >= H && aspect > 1.1 && aspect < 2.5;
+  let w, h;
+  if ((W / H > aspect) === cover) { w = W; h = W / aspect; } else { h = H; w = H * aspect; }
+  w = Math.round(w); h = Math.round(h);
+  // The frame is as wide as the picture and reaches past the top and bottom of the screen, so YouTube's
+  // bars sit off-screen; YouTube fits the picture to the frame's width and centres it.
+  const fh = Math.max(H, h) + 2 * pad;
+  Object.assign(f.style, { left: Math.round((W - w) / 2) + 'px', top: Math.round((H - fh) / 2) + 'px', right: 'auto', bottom: 'auto', width: w + 'px', height: fh + 'px' });
 }
 window.addEventListener('resize', fitStage);
 fitStage();
@@ -509,9 +519,9 @@ function updateProgress() {
 }
 let bannerTimer = 0;
 function showBanner() {
-  els.banner.classList.remove('hide'); els.hint.classList.remove('hide');
+  els.banner.classList.remove('hide'); els.hint.classList.remove('hide'); document.body.classList.add('ui');
   clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(() => { if (!guideOpen) { els.banner.classList.add('hide'); els.hint.classList.add('hide'); } }, 6000);
+  bannerTimer = setTimeout(() => { if (!guideOpen) { els.banner.classList.add('hide'); els.hint.classList.add('hide'); document.body.classList.remove('ui'); } }, 6000);
 }
 function showNotice(t, x) { els.nTitle.textContent = t; els.nText.textContent = x; els.notice.hidden = false; }
 function hideNotice() { els.notice.hidden = true; }
@@ -526,12 +536,16 @@ function renderGuide() {
       b.addEventListener('click', () => { closeGuide(); start(); tune(i); });
       els.list.appendChild(b);
     });
-    const cc = document.createElement('button');
-    cc.className = 'row setting'; cc.type = 'button';
-    cc.innerHTML = '<span class="n">CC</span><span class="t">Captions</span><span class="state"></span>';
-    cc.addEventListener('click', toggleCaptions);
-    els.list.appendChild(cc);
-    setCcLabels();
+    SETTINGS.forEach((st, j) => {
+      const b = document.createElement('button');
+      b.className = 'row setting' + (j ? '' : ' first'); b.type = 'button'; b.dataset.setting = st.key;
+      b.innerHTML = '<span class="n"></span><span class="t"></span><span class="state"></span>';
+      b.querySelector('.n').textContent = st.tag;
+      b.querySelector('.t').textContent = st.label;
+      b.addEventListener('click', st.toggle);
+      els.list.appendChild(b);
+    });
+    setSettingLabels();
   }
   [...els.list.children].forEach((b, i) => {
     b.classList.toggle('cursor', guideOpen && i === guideCursor);
@@ -546,8 +560,16 @@ function openGuide() { guideOpen = true; guideCursor = chIndex; els.guide.classL
 function closeGuide() { guideOpen = false; els.guide.classList.remove('open'); renderGuide(); }
 
 /* ---------- start (needs one press/tap so the browser allows sound) ---------- */
+function goFullscreen() {
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return;                                    // e.g. iPhone Safari: no page fullscreen
+  try { const r = req.call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => {}); } catch (e) { /* not allowed here */ }
+}
 function start() {
   if (started) return;
+  goFullscreen();
   started = true;
   els.boot.hidden = true;
   tune(chIndex);           // shows the tuning screen; plays now, or once the player is ready
@@ -571,14 +593,22 @@ function togglePause() {
   else { player.playVideo(); setBanner(CHANNELS[chIndex], els.title.textContent, playingBadge()); }
   showBanner();
 }
-function setCcLabels() {
+// Settings at the bottom of the guide, so the Fire Stick remote can reach them (▼ past the last channel, OK).
+const SETTINGS = [
+  { key: 'cc', tag: 'CC', label: 'Captions', get: () => ccOn, on: 'ON', off: 'OFF', toggle: () => toggleCaptions() },
+  { key: 'fill', tag: '\u25A3', label: 'Picture', get: () => fillOn, on: 'FILL', off: 'FIT', toggle: () => toggleFill() },
+];
+function setSettingLabels() {
   const b = $('btn-cc');
   b.classList.toggle('on', ccOn); b.setAttribute('aria-pressed', String(ccOn));
-  const st = els.list.querySelector('.setting .state');
-  if (st) { st.textContent = ccOn ? 'ON' : 'OFF'; st.classList.toggle('on', ccOn); }
+  SETTINGS.forEach((st) => {
+    const el = els.list.querySelector('[data-setting="' + st.key + '"] .state');
+    if (el) { el.textContent = st.get() ? st.on : st.off; el.classList.toggle('on', st.get()); }
+  });
 }
+function toggleFill() { fillOn = !fillOn; store.set('fill', fillOn); setSettingLabels(); fitStage(); showBanner(); }
 function toggleCaptions() {
-  ccOn = !ccOn; store.set('cc', ccOn); setCcLabels(); showBanner();
+  ccOn = !ccOn; store.set('cc', ccOn); setSettingLabels(); showBanner();
   if (!player || !apiReady) return;
   if (prog && prog.seeked && prog.token === token && player.getCurrentTime) {
     resume = { ch: chIndex, vid: prog.vid, t: Math.max(0, player.getCurrentTime() - 1), seq: prog.seq, pinned: !!prog.pinned };
@@ -600,14 +630,15 @@ function toggleSound() {
 }
 window.addEventListener('keydown', (e) => {
   const k = e.key, code = e.keyCode;
+  if (started && (k === 'Enter' || code === 23)) goFullscreen();
   if (!started) {
     if (k === 'Enter' || k === ' ' || code === 23 || code === 179) { e.preventDefault(); start(); }
     return;
   }
   if (guideOpen) {
     if (k === 'ArrowUp') guideCursor = Math.max(0, guideCursor - 1);
-    else if (k === 'ArrowDown') guideCursor = Math.min(CHANNELS.length, guideCursor + 1);     // last row: captions
-    else if ((k === 'Enter' || k === ' ') && guideCursor === CHANNELS.length) toggleCaptions();
+    else if (k === 'ArrowDown') guideCursor = Math.min(CHANNELS.length + SETTINGS.length - 1, guideCursor + 1);   // settings below the channels
+    else if ((k === 'Enter' || k === ' ') && guideCursor >= CHANNELS.length) SETTINGS[guideCursor - CHANNELS.length].toggle();
     else if (k === 'Enter' || k === ' ') { closeGuide(); tune(guideCursor); }
     else if (k === 'ArrowLeft' || k === 'Escape' || k === 'Backspace' || k === 'GoBack' || code === 4) closeGuide();
     else return;
@@ -624,6 +655,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'MediaRewind' || code === 227) { player.seekTo(Math.max(0, player.getCurrentTime() - 30), true); showBanner(); }
   else if (k === 'm') toggleSound();
   else if (k === 'c') toggleCaptions();
+  else if (k === 'z') toggleFill();
   else if (/^[0-9]$/.test(k)) typeNumber(k);
   else return;
   e.preventDefault();
