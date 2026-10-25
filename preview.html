@@ -262,7 +262,7 @@ function onStateChange(e) {
   if (cueWaiter && (s === YT.PlayerState.CUED || s === YT.PlayerState.UNSTARTED)) { cueWaiter(); return; }
   if (!prog || prog.token !== token) return;
   if (s === YT.PlayerState.PLAYING) {
-    els.stat.classList.remove('on');
+    els.stat.classList.remove('on'); hideNotice();
     if (!prog.seeked) {
       const d = player.getDuration() || 0;
       const data = player.getVideoData ? player.getVideoData() : {};
@@ -283,24 +283,27 @@ function onError() {
 }
 function markBad(v) { if (!v) return; bad.add(v); store.set('bad', [...bad].slice(-400)); }
 
-function cueList(list) {
-  // Ask the player for a playlist; it hands back the video ids it can see.
+function cueList(list, wait) {
+  // Ask the player for a playlist; it hands back the video ids it can see. Only trust the answer once
+  // the player says it holds this exact list (a failed load can leave the previous list behind).
   return new Promise((resolve) => {
-    let done = false, polls = 0;
-    const finish = () => {
-      if (done) return;
-      const ids = (player.getPlaylist && player.getPlaylist()) || [];
-      if (!ids.length && polls++ < 20) { setTimeout(finish, 250); return; }
-      done = true; cueWaiter = null; resolve(ids);
-    };
-    cueWaiter = () => setTimeout(finish, 150);
-    setTimeout(() => { if (!done) finish(); }, 9000);
+    const t0 = Date.now(), limit = wait || 9000;
+    let done = false, poll = 0;
+    const finish = (ids) => { if (done) return; done = true; clearInterval(poll); cueWaiter = null; resolve(ids); };
+    poll = setInterval(() => {
+      const same = !player.getPlaylistId || player.getPlaylistId() === list;
+      const ids = same && player.getPlaylist ? (player.getPlaylist() || []) : [];
+      const waited = Date.now() - t0;
+      if (ids.length) finish(ids);
+      else if (waited > limit || (same && waited > 3000 && player.getPlayerState() === YT.PlayerState.CUED)) finish([]);
+    }, 250);
+    cueWaiter = () => {};     // swallow the player's cue/error events while the list loads
     player.cuePlaylist({ listType: 'playlist', list, index: 0 });
   });
 }
 async function cueUploads(ch) {
   if (ch.list) return cueList(ch.list);                          // a show playlist
-  const ids = await cueList('UULF' + ch.id.slice(2));            // creator's long videos only (no Shorts)
+  const ids = await cueList('UULF' + ch.id.slice(2), 5000);      // creator's long videos only (no Shorts)
   return ids.length ? ids : cueList('UU' + ch.id.slice(2));      // or all their uploads
 }
 async function idsFor(ch) {
@@ -357,14 +360,14 @@ async function tune(i, quiet) {
   renderGuide();
   if (LOCAL) { els.tuning.textContent = ''; showNotice(...NEED_LINK); return; }
   if (ytBlocked) { els.tuning.textContent = ''; showNotice(...NO_YT); return; }
-  // If nothing is on screen after 15 s, say so instead of tuning forever.
+  // If nothing is on screen after 20 s, say so instead of tuning forever.
   clearTimeout(watchdog);
   watchdog = setTimeout(() => {
     if (my !== token || !els.stat.classList.contains('on') || !els.notice.hidden) return;
     els.tuning.textContent = '';
     if (ytBlocked || !apiReady || !player || !player.cuePlaylist) showNotice(...NO_YT);
     else showNotice('Still tuning ' + ch.name, 'YouTube isn\'t answering. Check the internet connection, or press ▲ or ▼ to try another channel.');
-  }, 15000);
+  }, 20000);
   if (!apiReady || !player || !player.cuePlaylist) return;      // onReady will tune once the player exists
   const ids = await idsFor(ch);
   if (my !== token) return;
