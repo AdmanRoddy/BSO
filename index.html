@@ -35,7 +35,8 @@ body.tapyt #touch{pointer-events:none}
   font-family:'Saira Condensed',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.14em;text-align:center;pointer-events:none;display:none}
 body.tapyt #tapchip{display:block}
 #tapchip small{display:block;margin-top:.2rem;font-size:1rem;letter-spacing:.08em;color:var(--muted);font-weight:600}
-#dbg{position:fixed;left:.5rem;bottom:.5rem;z-index:40;max-width:60vw;margin:0;padding:.4rem .6rem;border-radius:.4rem;background:rgba(0,0,0,.75);color:#9fe39f;font:12px/1.35 monospace;white-space:pre-wrap;pointer-events:none}
+#dbg{position:fixed;left:.5rem;top:.5rem;z-index:40;max-width:70vw;margin:0;padding:.5rem .7rem;border-radius:.4rem;background:rgba(0,0,0,.8);color:#9fe39f;font:1rem/1.35 monospace;white-space:pre-wrap;pointer-events:none}
+#dbg[hidden]{display:none}
 
 .bug{position:fixed;right:3rem;top:2.5rem;width:13rem;opacity:0;pointer-events:none;transition:opacity .35s ease}
 body.ui .bug{opacity:.42}      /* the logo shows with the info banner, not over the show */
@@ -281,7 +282,8 @@ const PERMANENT_ERR = { 100: 1, 101: 1, 150: 1 };
 const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const TOUCH = IOS || /Android|Mobi/i.test(navigator.userAgent);
 let unlocked = false;                    // iPad/iPhone: YouTube's player has had its one tap
-const DEBUG = /[?&]debug\b/.test(location.search);
+let DEBUG = /[?&]debug\b/.test(location.search) || !!store.get('debug', false);
+let coverAds = store.get('cover', true) !== false;   // Commercial cover: hide and mute YouTube's ads behind the BSO slate
 const dbgLines = [];
 function dbg(m) {
   if (!DEBUG) return;
@@ -289,6 +291,7 @@ function dbg(m) {
   while (dbgLines.length > 14) dbgLines.shift();
   let el = document.getElementById('dbg');
   if (!el) { el = document.createElement('pre'); el.id = 'dbg'; document.body.appendChild(el); }
+  el.hidden = false;
   el.textContent = dbgLines.join('\n');
 }
 try { Object.keys(localStorage).forEach((k) => { if (k.startsWith('bsotv:pl:')) localStorage.removeItem(k); }); } catch (e) { /* old all-uploads cache */ }
@@ -488,6 +491,9 @@ async function idsFor(ch) {
 // Ads often come in pairs, so the slate waits a moment before dropping, to skip a flash between them.
 let adOn = false, adFailsafe = 0, adOffTimer = 0;
 function adBreak(on, now) {
+  if (on && !adOn) dbg('ad starting' + (coverAds ? ' (cover on)' : ' (cover off)'));
+  if (!on && adOn) dbg('ad over');
+  if (on && !coverAds) return;               // cover turned off in the guide: ads show as YouTube plays them
   clearTimeout(adOffTimer);
   if (!on && adOn && !now) { adOffTimer = setTimeout(() => adBreak(false, true), 800); return; }
   if (on === adOn) return;
@@ -498,7 +504,7 @@ function adBreak(on, now) {
     els.stat.classList.remove('on');           // the slate replaces the tuning screen
     els.ad.classList.add('on');
     if (player && player.mute) player.mute();
-    adFailsafe = setTimeout(() => adBreak(false), 4 * 60000);   // never leave the slate stuck up
+    adFailsafe = setTimeout(() => { dbg('cover up 90 s: taking it down'); adBreak(false, true); }, 90000);   // never leave the slate stuck up
   } else {
     if (prog && prog.token === token && !prog.seeked) els.stat.classList.add('on');   // show starts behind the tuning screen
     els.ad.classList.remove('on');
@@ -513,6 +519,7 @@ async function tune(i, quiet) {
   chIndex = i; store.set('last', i);
   const ch = CHANNELS[i], my = ++token;
   hideNotice(); adBreak(false, true);
+  dbg('tuning ' + pad2(i + 1) + ' ' + ch.name);
   els.stat.classList.add('on'); els.tuning.textContent = 'TUNING CH ' + pad2(i + 1) + '…';
   setBanner(ch, '', true);
   if (!quiet) showBanner();
@@ -705,6 +712,10 @@ const SETTINGS = [
   { key: 'cc', tag: 'CC', label: 'Captions', get: () => ccOn, on: 'ON', off: 'OFF', toggle: () => toggleCaptions() },
   { key: 'fill', tag: '\u25A3', label: 'Picture', get: () => fillOn, on: 'FILL', off: 'FIT', toggle: () => toggleFill() },
 ];
+SETTINGS.push({ key: 'cover', tag: 'AD', label: 'Commercial cover', get: () => coverAds, on: 'ON', off: 'OFF',
+  toggle: () => { coverAds = !coverAds; store.set('cover', coverAds); if (!coverAds) adBreak(false, true); setSettingLabels(); showBanner(); } });
+SETTINGS.push({ key: 'debug', tag: '?', label: 'Show what YouTube says', get: () => DEBUG, on: 'ON', off: 'OFF',
+  toggle: () => { DEBUG = !DEBUG; store.set('debug', DEBUG); const el = document.getElementById('dbg'); if (el) el.hidden = !DEBUG; if (DEBUG) dbg('showing what YouTube says'); setSettingLabels(); } });
 if (!IN_APP) SETTINGS.push({ key: 'yt', tag: 'YT', label: 'YouTube sign-in (Premium: no ads)', get: () => false, on: '', off: 'OPEN',
   toggle: () => { window.open('https://accounts.google.com/ServiceLogin?service=youtube&continue=' + encodeURIComponent('https://www.youtube.com/'), '_blank'); } });
 function setSettingLabels() {
