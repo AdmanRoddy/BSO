@@ -1,0 +1,8 @@
+build-tools: /usr/local/lib/android/sdk/build-tools/37.0.0
+platform: /usr/local/lib/android/sdk/platforms/android-37.2-beta3/android.jar
+build/res.zip@values_strings.arsc.flat: error: resource string/app_name does not override an existing resource.
+build/res.zip@values_strings.arsc.flat: note: define an <add-resource> tag or use --auto-add-overlay.
+build/res.zip@values_strings.arsc.flat: error: resource string/home_watcher_desc does not override an existing resource.
+build/res.zip@values_strings.arsc.flat: note: define an <add-resource> tag or use --auto-add-overlay.
+build/res.zip@values_strings.arsc.flat: error: failed to merge resource table.
+error: failed parsing overlays.
