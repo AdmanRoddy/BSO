@@ -238,6 +238,43 @@
 
   var CMDS = {
     version: function () { return VERSION; },
+    // Requests to the TV itself (127.0.0.1 only): how Premium mode hands a show to the TV's YouTube app.
+    localHttp: function (a) {
+      var url = String(a.url || '');
+      if (!/^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)) return Promise.reject(new Error('local addresses only'));
+      return new Promise(function (resolve) {
+        var x = new XMLHttpRequest();
+        x.open(a.method || 'POST', url, true);
+        x.timeout = 8000;
+        if (a.type) { try { x.setRequestHeader('Content-Type', a.type); } catch (e) { /* not allowed */ } }
+        x.onload = function () { resolve({ status: x.status, body: String(x.responseText || '').slice(0, 200) }); };
+        x.onerror = function () { resolve({ status: 0, body: 'no answer' }); };
+        x.ontimeout = function () { resolve({ status: 0, body: 'timeout' }); };
+        x.send(a.body == null ? null : String(a.body));
+      });
+    },
+    localWs: function (a) {
+      var url = String(a.url || '');
+      if (!/^wss?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\//.test(url)) return Promise.reject(new Error('local addresses only'));
+      return new Promise(function (resolve) {
+        var got = [], ws = null, done = false, sent = false;
+        function finish(why) { if (done) return; done = true; try { ws.close(); } catch (e) { /* closed */ } resolve({ why: why, got: got }); }
+        function sendAll() {
+          (a.send || []).forEach(function (m) { ws.send(typeof m === 'string' ? m : JSON.stringify(m)); });
+          sent = true; setTimeout(function () { finish('sent'); }, 1500);
+        }
+        try { ws = new WebSocket(url); } catch (e) { resolve({ why: 'could not open: ' + e.message, got: [] }); return; }
+        ws.onopen = function () { if (!a.afterConnect) sendAll(); };
+        ws.onmessage = function (ev) {
+          var t = String(ev.data); got.push(t.slice(0, 160));
+          if (a.afterConnect && !sent && /ms\.channel\.connect/.test(t)) sendAll();
+          if (/unauthorized|denied/i.test(t)) finish('refused');
+        };
+        ws.onerror = function () { finish(sent ? 'sent' : 'error'); };
+        ws.onclose = function (ev) { finish(sent ? 'sent' : 'closed ' + ev.code); };
+        setTimeout(function () { finish(sent ? 'sent' : 'timeout'); }, a.ms || 12000);
+      });
+    },
     log: function (a) { log('page ' + page + ': ' + String(a.msg).slice(0, 300)); return true; },
     apps: function () { return listApps(); },
     launch: function (a) { return launchAny(a.ids); },

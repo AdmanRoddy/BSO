@@ -283,7 +283,9 @@ const IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform 
 const TOUCH = IOS || /Android|Mobi/i.test(navigator.userAgent);
 let unlocked = false;                    // iPad/iPhone: YouTube's player has had its one tap
 let DEBUG = /[?&]debug\b/.test(location.search) || !!store.get('debug', false);
-let coverAds = store.get('cover', true) !== false;   // Commercial cover: hide and mute YouTube's ads behind the BSO slate
+let coverAds = store.get('cover', true) !== false;
+let liveJump = !!store.get('live', false);           // off: shows start from the top (fewer ads)
+let premiumTv = window.BSO_HOST === 'tizen' && !!store.get('premiumTv', false);   // Samsung: play in the TV's YouTube app   // Commercial cover: hide and mute YouTube's ads behind the BSO slate
 const dbgLines = [];
 function dbg(m) {
   if (!DEBUG) return;
@@ -417,7 +419,7 @@ function onStateChange(e) {
         setTimeout(() => { if (prog && prog.vid === vid && !ccOn) captionsOff(); }, 1500);
         setTimeout(() => { if (prog && prog.vid === vid && !ccOn) captionsOff(); }, 4000);
       }
-      if (prog.live) player.seekTo(liveOffset(d), true);
+      if (prog.live && liveJump) player.seekTo(liveOffset(d), true);   // jumping past a creator's ad break plays that ad
       showInfo();
       prog.revealAt = Date.now() + REVEAL_DELAY;
       setTimeout(() => { if (prog && prog.token === my && prog.vid === vid) reveal(); }, REVEAL_DELAY);
@@ -539,6 +541,39 @@ async function tune(i, quiet) {
   if (my !== token) return;
   if (!ids.length) { unavailable(ch); return; }
   prog = { seq: 0, tries: 0, token: my, live: true };
+  if (premiumTv) { castOrPlay(ch, ids, my); return; }
+  play(ch, ids, true);
+}
+// Premium mode (Samsung app): the TV's own YouTube app, signed in to Premium, plays the show with no ads.
+// It's started the way phones cast to the TV; each way is tried until one takes.
+async function castShow(vid) {
+  const tz = window.bsoTizen, body = 'v=' + vid;
+  const ways = [
+    ['cast (apps)', () => tz.call('localHttp', { url: 'http://127.0.0.1:8080/ws/apps/YouTube', method: 'POST', type: 'text/plain; charset=utf-8', body })],
+    ['cast (app)', () => tz.call('localHttp', { url: 'http://127.0.0.1:8080/ws/app/YouTube', method: 'POST', type: 'text/plain; charset=utf-8', body })],
+    ['remote link', () => tz.call('localWs', { url: 'ws://127.0.0.1:8001/api/v2/channels/samsung.remote.control?name=' + btoa('Bent Steering'), afterConnect: true,
+      send: [{ method: 'ms.channel.emit', params: { event: 'ed.apps.launch', to: 'host', data: { appId: '111299001912', action_type: 'DEEP_LINK', metaTag: body } } }] }, 15000)],
+  ];
+  for (const w of ways) {
+    try {
+      const r = await w[1]();
+      bsoLog(w[0] + ': ' + JSON.stringify(r).slice(0, 160));
+      if (r && (r.status === 200 || r.status === 201 || r.why === 'sent')) return true;
+    } catch (e) { bsoLog(w[0] + ' failed: ' + e.message); }
+  }
+  return false;
+}
+async function castOrPlay(ch, ids, my) {
+  const vid = pickVideo(ch, ids, 0);
+  prog.vid = vid;
+  try { player.stopVideo(); } catch (e) { /* nothing playing */ }
+  els.tuning.textContent = 'OPENING CH ' + pad2(chIndex + 1) + ' IN YOUTUBE…';
+  const ok = await castShow(vid);
+  if (my !== token) return;
+  els.tuning.textContent = '';
+  if (ok) { clearTimeout(watchdog); showNotice(ch.name + ' is on in YouTube', 'Premium: no ads. Press RETURN on the remote to come back here and pick another channel.'); return; }
+  showNotice("Premium mode couldn't open YouTube", 'Playing here instead. Turn Premium mode off in the guide if this keeps happening.');
+  setTimeout(() => { if (my === token) hideNotice(); }, 6000);
   play(ch, ids, true);
 }
 function play(ch, ids, live) {
@@ -682,7 +717,10 @@ els.tuneIn.addEventListener('click', start);
 if (IN_APP) setTimeout(start, 2600);
 // The remote's Back button: close the guide first; otherwise the app goes back home.
 window.bsoBack = () => { if (guideOpen) { closeGuide(); return true; } return false; };
-window.bsoResume = () => { if (started && player && player.playVideo) { player.playVideo(); showBanner(); } };
+window.bsoResume = () => {
+  if (premiumTv && started) { openGuide(); return; }        // back from the YouTube app: pick the next channel
+  if (started && player && player.playVideo) { player.playVideo(); showBanner(); }
+};
 // what the TV-engine test reads
 window.bsoProbe = () => {
   let st = null, t = null, title = null;
@@ -712,6 +750,10 @@ const SETTINGS = [
   { key: 'cc', tag: 'CC', label: 'Captions', get: () => ccOn, on: 'ON', off: 'OFF', toggle: () => toggleCaptions() },
   { key: 'fill', tag: '\u25A3', label: 'Picture', get: () => fillOn, on: 'FILL', off: 'FIT', toggle: () => toggleFill() },
 ];
+if (window.BSO_HOST === 'tizen') SETTINGS.push({ key: 'premium', tag: 'P', label: 'Premium mode (YouTube app, no ads)', get: () => premiumTv, on: 'ON', off: 'OFF',
+  toggle: () => { premiumTv = !premiumTv; store.set('premiumTv', premiumTv); setSettingLabels(); closeGuide(); tune(chIndex); } });
+SETTINGS.push({ key: 'live', tag: '\u23F1', label: 'Jump in mid-show (more ads)', get: () => liveJump, on: 'ON', off: 'OFF',
+  toggle: () => { liveJump = !liveJump; store.set('live', liveJump); setSettingLabels(); showBanner(); } });
 SETTINGS.push({ key: 'cover', tag: 'AD', label: 'Commercial cover', get: () => coverAds, on: 'ON', off: 'OFF',
   toggle: () => { coverAds = !coverAds; store.set('cover', coverAds); if (!coverAds) adBreak(false, true); setSettingLabels(); showBanner(); } });
 SETTINGS.push({ key: 'debug', tag: '?', label: 'Show what YouTube says', get: () => DEBUG, on: 'ON', off: 'OFF',
