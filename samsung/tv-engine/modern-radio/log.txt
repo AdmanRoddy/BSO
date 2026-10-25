@@ -6,7 +6,7 @@
 [J R-dio] stations from 21500 (asked 5000): got 5000 from de2
 [J R-dio] stations from 26500 (asked 5000): got 5000 from de2
 [J R-dio] stations from 31500 (asked 5000): got 5000 from de2
-[J R-dio] stations from 36500 (asked 5000): got 4268 from de2
-[J R-dio] stations from 40768 (asked 5000): got 0 from de2
-[J R-dio] no new stations from 40768, stopping
-PROBE {"page":"radio","total":40529,"allDone":true,"placed":40099,"shown":40099,"spots":35635,"loading":false,"playing":false,"status":"PRESS OK TO PLAY","station":null,"tunedHere":1,"time":0,"overlay":null}
+[J R-dio] stations from 36500 (asked 5000): got 4286 from de2
+[J R-dio] stations from 40786 (asked 5000): got 0 from de2
+[J R-dio] no new stations from 40786, stopping
+PROBE {"page":"radio","total":40547,"allDone":true,"placed":40117,"shown":40117,"spots":35653,"loading":false,"playing":false,"status":"PRESS OK TO PLAY","station":null,"tunedHere":1,"time":0,"overlay":null}
