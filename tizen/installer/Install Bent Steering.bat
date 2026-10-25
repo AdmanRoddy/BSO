@@ -4,7 +4,6 @@ title Bent Steering - Samsung TV installer
 cd /d "%~dp0"
 set "SDB=%~dp0tools\sdb.exe"
 set "APPID=BSOffroad1.BentSteering"
-set "APPNAME=BentSteering"
 set "LOG=%TEMP%\bso-install.txt"
 
 echo.
@@ -60,41 +59,36 @@ if errorlevel 1 (
   goto :end
 )
 
-set "TOOLPATH="
-for /f "usebackq tokens=1,* delims=:" %%a in (`"%SDB%" -s !DEV! capability 2^>nul`) do (
-  if /i "%%a"=="sdk_toolpath" set "TOOLPATH=%%b"
-)
-if not defined TOOLPATH set "TOOLPATH=/home/owner/share/tmp/sdk_tools"
-
+rem Same steps as Samsung's own tools: the package goes in sdk_tools/tmp, and the TV is given the full app id.
+set "DEST=/home/owner/share/tmp/sdk_tools/tmp/BentSteering.wgt"
 echo    Sending the app to the TV ...
-"%SDB%" -s !DEV! push "BentSteering.wgt" "!TOOLPATH!/BentSteering.wgt"
+"%SDB%" -s !DEV! push "BentSteering.wgt" "!DEST!"
 if errorlevel 1 (
-  echo    The TV didn't take the file. Try running this again.
-  goto :end
+  set "DEST=/home/owner/share/tmp/sdk_tools/BentSteering.wgt"
+  "%SDB%" -s !DEV! push "BentSteering.wgt" "!DEST!"
+  if errorlevel 1 (
+    echo    The TV didn't take the file. Try running this again.
+    goto :end
+  )
 )
 
 echo    Installing (about a minute) ...
 call :install
 findstr /l /c:"failed[" "%LOG%" >nul
 if not errorlevel 1 (
-  findstr /i /c:"not match" "%LOG%" >nul
-  if not errorlevel 1 (
-    echo    Replacing the older copy of Bent Steering ...
-    "%SDB%" -s !DEV! shell 0 vd_appuninstall %APPNAME% >nul 2>&1
-    call :install
-  )
+  echo    Removing any older copy of Bent Steering and trying again ...
+  "%SDB%" -s !DEV! shell 0 vd_appuninstall %APPID% >nul 2>&1
+  call :install
 )
 findstr /l /c:"failed[" "%LOG%" >nul
 if not errorlevel 1 (
   echo.
-  echo    The install didn't work. The TV said:
-  type "%LOG%"
-  findstr /i /c:"certificate" "%LOG%" >nul
-  if not errorlevel 1 echo    This TV wants a Samsung certificate made for it. Send this message to Claude.
+  echo    The install didn't work. Take a photo of this window and send it to Claude.
   goto :end
 )
 
 echo    Starting Bent Steering on the TV ...
+"%SDB%" -s !DEV! shell 0 execute %APPID% >nul 2>&1
 "%SDB%" -s !DEV! shell 0 was_execute %APPID% >nul 2>&1
 echo.
 echo    Done. Bent Steering is on the TV.
@@ -103,7 +97,7 @@ echo    turn Autorun Last App ON and Autorun Smart Hub OFF.
 goto :end
 
 :install
-"%SDB%" -s !DEV! shell 0 vd_appinstall %APPNAME% "!TOOLPATH!/BentSteering.wgt" > "%LOG%" 2>&1
+"%SDB%" -s !DEV! shell 0 vd_appinstall %APPID% "!DEST!" > "%LOG%" 2>&1
 findstr /v /r /c:"^ *$" "%LOG%"
 exit /b
 
