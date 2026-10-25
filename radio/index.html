@@ -361,7 +361,7 @@ function slim(s) {
 
 /* The whole Radio Browser directory, most-listened first: the first page comes in fast so the map is
    usable right away, the rest streams in behind it, and the list is kept on the device for 3 days. */
-const FIRST = 1500, PAGE = 5000, MAX_PAGES = 30, KEEP_MS = 3 * 86400000;
+const FIRST = 1500, PAGE = 5000, MAX_PAGES = 80, KEEP_MS = 3 * 86400000;
 let all = [], placed = [], allDone = false;
 function idb() {
   return new Promise((res, rej) => {
@@ -386,9 +386,10 @@ async function fetchAll(quiet) {
     try { list = await api(pagePath(offset, limit), 60000); }
     catch (e) { if (!out.length && !quiet) throw e; break; }
     for (const st of list) if (st && !seen.has(st.stationuuid) && usable(st)) { seen.add(st.stationuuid); out.push(slim(st)); }
-    offset += limit;
+    offset += list.length;
     if (!quiet) { all = out; place(); refresh(page === 0); setCount(); }
-    if (list.length < limit) break;
+    // Some directory servers hand back at most 1,000 at a time, so a short page isn't always the end.
+    if (!list.length || list.length < Math.min(limit, 1000)) break;
   }
   all = out; allDone = true; place(); refresh(false); setCount();
   idbSet('stations', { t: Date.now(), httpsOnly, list: out });
