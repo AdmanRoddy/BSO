@@ -62,6 +62,10 @@ jobs:
           echo "the website didn't update in 10 minutes; testing what's there"
       - name: Run the app on Chromium 56
         run: bash tvtest/run.sh
+      - name: The same YouTube check in today's Chrome
+        if: always()
+        run: |
+          cd tvtest && npm i --no-save --silent puppeteer-core@23 && node modern.js || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

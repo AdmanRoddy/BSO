@@ -1,0 +1,40 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>YouTube check</title>
+<meta name="referrer" content="strict-origin-when-cross-origin"></head>
+<body style="margin:0;background:#000;color:#fff;font:20px sans-serif">
+<div id="p"></div><pre id="out" style="position:fixed;left:10px;bottom:10px;margin:0;opacity:.8"></pre>
+<script>
+// A bare YouTube player that reports what happens, for testing old TV web engines.
+// yt.html#VIDEO_ID plays one video; yt.html?list=PLAYLIST cues a playlist first.
+var out = document.getElementById('out');
+function log(m) { console.log('YT ' + m); out.textContent += m + '\n'; }
+window.onerror = function (m, s, l) { log('page error ' + m + ' ' + s + ':' + l); };
+var q = /[?&]list=([^&]+)/.exec(location.search), list = q ? q[1] : null;
+var vid = location.hash.slice(1) || 'jNQXAC9IVRw';
+var tag = document.createElement('script');
+tag.src = 'https://www.youtube.com/iframe_api';
+tag.onerror = function () { log('iframe_api failed to load'); };
+document.head.appendChild(tag);
+var player;
+function onYouTubeIframeAPIReady() {
+  log('api ready');
+  player = new YT.Player('p', { width: 1280, height: 720, videoId: list ? undefined : vid,
+    playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
+    events: {
+      onReady: function () {
+        log('player ready');
+        if (list) { player.cuePlaylist({ listType: 'playlist', list: list, index: 0 }); setTimeout(function () {
+          var ids = player.getPlaylist() || []; log('playlist ' + list + ' has ' + ids.length + ' videos; id now ' + player.getPlaylistId());
+          if (ids.length) player.loadVideoById(ids[0]);
+        }, 6000); }
+        else player.playVideo();
+      },
+      onStateChange: function (e) { log('state ' + e.data); },
+      onError: function (e) { log('error ' + e.data); }
+    } });
+  setInterval(function () {
+    try { var d = player.getVideoData ? player.getVideoData() : {}; log('tick state ' + player.getPlayerState() + ' t=' + (player.getCurrentTime() || 0).toFixed(1) + ' title=' + (d && d.title)); }
+    catch (e) { log('tick ' + e.message); }
+  }, 5000);
+}
+</script></body></html>

@@ -817,7 +817,7 @@ window.bsoBack = () => {
 // back in the app after the TV's Home button: carry on playing
 window.bsoResume = () => { if (current && !playing) togglePlay(); };
 // what the TV-engine test reads
-window.bsoProbe = () => ({ page: 'radio', placed: placed.length, shown, spots: spots.length, loading, playing, status: els.status.textContent,
+window.bsoProbe = () => ({ page: 'radio', total: all.length, allDone, placed: placed.length, shown, spots: spots.length, loading, playing, status: els.status.textContent,
   station: current ? current.name : null, tunedHere: tuned ? tuned.stations.length : 0, time: Math.round(audio.currentTime || 0), overlay: els.overlay.hidden ? null : els.ovTitle.textContent });
 })();
 </script>

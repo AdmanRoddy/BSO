@@ -13,3 +13,12 @@ URL="file://$PWD/../tizen/app/index.html"
 timeout 240 xvfb-run -a -s "-screen 0 1920x1080x24" ./e16/electron --no-sandbox . "$URL" 165 2>&1 \
   | grep -vE "Gtk-|GLib|dbus|libva|Fontconfig|^$|gles2|Xlib|ALSA|gpu_|GPU|end of its support|encouraged|Read about" | tee out/log.txt
 echo "exit $?"
+
+# YouTube by itself on the old engine: one video, then a channel's uploads list (Bleepin' Jeep)
+YT="https://admanroddy.github.io/BSO/tvtest/yt.html"
+for case in "video|$YT#jNQXAC9IVRw" "channel|$YT?list=UULFvlG_ZnHoZLPv0CVWOC0a1Q"; do
+  name="${case%%|*}"; url="${case#*|}"
+  mkdir -p "out/yt-$name"
+  MOCK_TIZEN= SHOTDIR="$PWD/out/yt-$name" STEPS="$PWD/steps-yt.json" timeout 90 xvfb-run -a -s "-screen 0 1920x1080x24" ./e16/electron --no-sandbox . "$url" 45 2>&1 \
+    | grep -E "YT |ERROR|error" | tee "out/yt-$name/log.txt"
+done

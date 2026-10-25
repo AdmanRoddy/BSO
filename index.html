@@ -392,7 +392,10 @@ function onStateChange(e) {
     next(false);
   }
 }
-function onError() {
+// in the Samsung app, what YouTube says goes to the app's log
+const bsoLog = (m) => { if (window.bsoTizen && window.bsoTizen.on) window.bsoTizen.tell('log', { msg: m }); };
+function onError(e) {
+  bsoLog('youtube error ' + (e && e.data) + (prog && prog.vid ? ' on ' + prog.vid : '') + (cueWaiter ? ' (loading a list)' : ''));
   if (cueWaiter) { cueWaiter(); return; }
   if (!prog || prog.token !== token) return;
   markBad(prog.vid);
@@ -406,7 +409,7 @@ function cueList(list, wait) {
   return new Promise((resolve) => {
     const t0 = Date.now(), limit = wait || 9000;
     let done = false, poll = 0;
-    const finish = (ids) => { if (done) return; done = true; clearInterval(poll); cueWaiter = null; resolve(ids); };
+    const finish = (ids) => { if (done) return; done = true; clearInterval(poll); cueWaiter = null; bsoLog('list ' + list + ': ' + ids.length + ' videos'); resolve(ids); };
     poll = setInterval(() => {
       const same = !player.getPlaylistId || player.getPlaylistId() === list;
       const ids = same && player.getPlaylist ? (player.getPlaylist() || []) : [];
@@ -513,6 +516,7 @@ function next(live) {
   play(ch, ids, live);
 }
 function unavailable(ch) {
+  bsoLog('off the air: ' + ch.name);
   els.stat.classList.add('on'); els.tuning.textContent = '';
   showNotice(ch.name + ' is off the air', 'YouTube would not play this channel\'s videos here. Press ▲ or ▼ to change the channel.');
 }
