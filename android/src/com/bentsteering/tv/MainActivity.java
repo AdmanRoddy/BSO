@@ -25,6 +25,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle state) {
         super.onCreate(state);
         Web.fullScreen(this, false);
+        PictureServer.start(this);
         web = Web.make(this);
         web.addJavascriptInterface(new Bridge(this), "BSOApp");
         web.setWebViewClient(new WebViewClient() {

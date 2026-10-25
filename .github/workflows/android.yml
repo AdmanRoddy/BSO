@@ -6,7 +6,7 @@ name: Build Fire Stick app
 on:
   push:
     branches: [main]
-    paths: ['android/**', '.github/workflows/android.yml']
+    paths: ['android/**', '!android/bso-tv.p12.enc', '.github/workflows/android.yml']
   workflow_dispatch:
 
 permissions:
@@ -29,8 +29,9 @@ jobs:
 
       - name: Build the app
         env:
-          # The signing key is in the repo only in encrypted form (android/bso-tv.p12.enc);
-          # its password lives in the repo's Actions secrets, never in the code.
+          # The app's signing key is made here on the first build and kept in the repo only in
+          # encrypted form (android/bso-tv.p12.enc). Its password is the repo's Actions secret,
+          # chosen by the owner; it is never in the code.
           SIGNING_PASSWORD: ${{ secrets.BSO_SIGNING_PASSWORD }}
         run: |
           set -euo pipefail
@@ -62,7 +63,15 @@ jobs:
             exit 0
           fi
           KEY="$RUNNER_TEMP/bso-tv.p12"
-          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in android/bso-tv.p12.enc -out "$KEY" -pass env:SIGNING_PASSWORD
+          if [ ! -f android/bso-tv.p12.enc ]; then
+            echo "First build: making the app's signing key"
+            keytool -genkeypair -keystore "$KEY" -storetype PKCS12 -alias bsotv -keyalg RSA -keysize 2048 -validity 36500 \
+              -storepass:env SIGNING_PASSWORD -keypass:env SIGNING_PASSWORD -dname "CN=Bent Steering TV, O=Bent Steering Offroad, C=US"
+            openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -in "$KEY" -out android/bso-tv.p12.enc -pass env:SIGNING_PASSWORD
+            echo "NEWKEY=1" >> "$GITHUB_ENV"
+          else
+            openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in android/bso-tv.p12.enc -out "$KEY" -pass env:SIGNING_PASSWORD
+          fi
           "$BT/apksigner" sign --ks "$KEY" --ks-type PKCS12 --ks-key-alias bsotv \
             --ks-pass env:SIGNING_PASSWORD --key-pass env:SIGNING_PASSWORD --out build/bso-tv.apk build/aligned.apk
           rm -f "$KEY"
@@ -83,6 +92,7 @@ jobs:
           git config user.name "BSO build"
           git config user.email "actions@users.noreply.github.com"
           git add app/bso-tv.apk app/version.json
+          if [ "${NEWKEY:-}" = "1" ]; then git add android/bso-tv.p12.enc; fi
           git commit -m "Fire Stick app build $VN"
           git pull --rebase origin main
           git push origin HEAD:main

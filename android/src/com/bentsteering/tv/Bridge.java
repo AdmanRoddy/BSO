@@ -166,6 +166,13 @@ final class Bridge {
     @JavascriptInterface
     public void update(String apkUrl) { Updater.start(act, apkUrl); }
 
+    /** Where to add private pictures from a phone or computer on the same Wi-Fi. */
+    @JavascriptInterface
+    public String pictureAddress() { return PictureServer.address(); }
+
+    @JavascriptInterface
+    public String picturePin() { return PictureServer.start(act).pin; }
+
     /** Recent screens Fire TV showed (helps tune the Home-button swap). */
     @JavascriptInterface
     public String seen() { return new JSONArray(HomeWatcher.recent()).toString(); }

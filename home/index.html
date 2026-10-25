@@ -87,6 +87,15 @@ main{flex:1;position:relative;padding:84px 96px 0 110px}
 .app.focus{transform:scale(1.06);box-shadow:0 0 0 5px #fff,0 20px 40px rgba(0,0,0,.5)}
 #apps .grid-wrap{height:860px;overflow:hidden}
 
+/* add pictures */
+#pics{padding:96px 140px}
+#pics h1{margin:0 0 30px;font-size:56px;font-weight:900;font-style:italic}
+#pics p{max-width:1400px;font-size:32px;line-height:1.45;color:#C9D2E8;margin:0 0 26px}
+#pics .addr{display:inline-block;margin:6px 0 30px;padding:18px 34px;border-radius:20px;background:var(--chip);font-size:56px;font-weight:800;letter-spacing:.01em}
+#pics .pin{color:var(--red)}
+#pics .counts{font-family:'Saira Condensed',sans-serif;font-size:30px;font-weight:700;letter-spacing:.12em;color:var(--muted)}
+.empty-bp{position:absolute;left:70px;top:640px;font-family:'Saira Condensed',sans-serif;font-size:28px;font-weight:700;letter-spacing:.14em;color:var(--dim)}
+
 /* setup */
 #setup{padding:96px 140px}
 #setup p{max-width:1400px;font-size:32px;line-height:1.45;color:#C9D2E8;margin:0 0 22px}
@@ -110,6 +119,7 @@ main{flex:1;position:relative;padding:84px 96px 0 110px}
     <p class="date" id="date"></p>
     <div class="blueprints" id="bp" aria-hidden="true"><img alt=""><img alt=""></div>
     <div class="badges" id="badges"></div>
+    <p class="empty-bp" id="empty-bp" hidden>NO BLUEPRINTS YET · ADD PICTURES BELOW</p>
     <div class="hint">▲ ▼ PICK  ·  OK OPEN</div>
   </main>
 
@@ -127,6 +137,14 @@ main{flex:1;position:relative;padding:84px 96px 0 110px}
       <li>Press Back to come home. From then on, Home and power-on bring you here.</li>
     </ol>
     <button class="go" id="setup-go">Open settings</button><button class="back" id="setup-back">Not now</button>
+  </section>
+
+  <section class="layer" id="pics" aria-label="Add pictures">
+    <h1>Add pictures</h1>
+    <p>Blueprints and crawler photos stay on this Fire Stick only. On a phone or computer on the same Wi-Fi, open this address and enter the PIN:</p>
+    <div class="addr" id="pics-addr"></div>
+    <p class="counts" id="pics-counts"></p>
+    <p>Press Back when you're done.</p>
   </section>
 
   <section class="layer" id="idle" aria-label="Screensaver">
@@ -176,6 +194,7 @@ const ICON = {
   home: 'M3 11l9-7 9 7 M5 10v10h14V10',
   update: 'M12 3v12 M7 10l5 5 5-5 M4 20h16',
   amazon: 'M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0 M8 12h8',
+  picture: 'M3 5h18v14H3z M3 16l5-5 4 4 3-3 6 6 M15.5 9a1.5 1.5 0 1 0 0.01 0',
 };
 const svg = (p) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${p}"></path></svg>`;
 
@@ -210,6 +229,7 @@ function openItem(it) {
 let update = null;
 function utilList() {
   const u = [{ name: 'Settings', icon: 'settings', open: () => app ? app.openSettings() : toast('Fire TV settings open on the Fire Stick') }];
+  if (app) u.push({ name: 'Add pictures', icon: 'picture', open: () => openPics() });
   if (app && !app.homeOverride()) u.unshift({ name: 'Make home', icon: 'home', alert: true, open: () => openSetup() });
   if (update) u.unshift({ name: 'Update ' + update.versionName, icon: 'update', alert: true, open: () => { toast('Downloading the update…'); app.update(update.apk); } });
   if (app) u.push({ name: 'Fire TV home', icon: 'amazon', open: () => app.fireHome() });
@@ -268,6 +288,7 @@ function loadPrivate() {
   $('badges').innerHTML = '';
   for (const n of badges) { const im = document.createElement('img'); im.alt = ''; im.src = 'https://bso.local/badges/' + encodeURIComponent(n); $('badges').appendChild(im); }
   $('idle-logo').hidden = !!bps.length;
+  $('empty-bp').hidden = !app || !!bps.length;
 }
 function nextBp() {
   if (!bps.length) return '';
@@ -332,7 +353,19 @@ function renderSetup() { $('setup-go').classList.toggle('focus', setupFocus === 
 $('setup-go').addEventListener('click', () => app ? app.openAccessibility() : toast('This opens Fire TV settings on the Fire Stick'));
 $('setup-back').addEventListener('click', () => closeLayer());
 
-function closeLayer() { if (layer) show(layer, false); layer = null; render(); }
+// add pictures
+let picsT = 0;
+function openPics() {
+  layer = 'pics'; show('pics', true);
+  const addr = app.pictureAddress();
+  $('pics-addr').innerHTML = '';
+  if (addr) { $('pics-addr').append(addr.replace('http://', '') + '   PIN '); const pn = document.createElement('span'); pn.className = 'pin'; pn.textContent = app.picturePin(); $('pics-addr').append(pn); }
+  else $('pics-addr').textContent = 'Connect the Fire Stick to Wi-Fi first';
+  const count = () => { loadPrivate(); const b = JSON.parse(app.files('badges')).length; $('pics-counts').textContent = bps.length + ' BLUEPRINTS  ·  ' + b + ' CRAWLER PHOTOS ON THE STICK'; };
+  count(); clearInterval(picsT); picsT = setInterval(count, 3000);
+}
+
+function closeLayer() { if (layer === 'pics') { clearInterval(picsT); loadPrivate(); bag = []; runSlides(); } if (layer) show(layer, false); layer = null; render(); }
 
 /* ---------- splash + idle ---------- */
 let splashT = 0;
@@ -365,6 +398,10 @@ addEventListener('keydown', (e) => {
     else if (back) { closeLayer(); }
     else return;
     e.preventDefault(); if (layer === 'apps') renderApps(); return;
+  }
+  if (layer === 'pics') {
+    if (back || k === 'Enter') { closeLayer(); e.preventDefault(); }
+    return;
   }
   if (layer === 'setup') {
     if (k === 'ArrowLeft' || k === 'ArrowUp') setupFocus = 0;
