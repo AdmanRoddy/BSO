@@ -179,22 +179,22 @@ function isLand(lat, lon) {
 
 /* ---------- categories ---------- */
 const CATS = [
-  { id: 'all', label: 'All', q: [{}] },
-  { id: 'rock', label: 'Rock', q: [{ tag: 'rock' }] },
-  { id: 'classicrock', label: 'Classic Rock', q: [{ tag: 'classic rock' }] },
-  { id: '90s', label: '90s', q: [{ tag: '90s' }, { tag: "90's" }] },
-  { id: 'alternative', label: 'Alternative', q: [{ tag: 'alternative' }] },
-  { id: 'indie', label: 'Indie', q: [{ tag: 'indie' }] },
-  { id: 'country', label: 'Country', q: [{ tag: 'country' }] },
-  { id: 'bluegrass', label: 'Bluegrass', q: [{ tag: 'bluegrass' }] },
-  { id: 'hiphop', label: 'Hip-Hop', q: [{ tag: 'hip hop' }, { tag: 'hiphop' }, { tag: 'rap', tagExact: 'true' }] },
-  { id: 'oldies', label: 'Oldies', q: [{ tag: 'oldies' }] },
-  { id: 'christian', label: 'Christian', q: [{ tag: 'christian' }] },
-  { id: 'gospel', label: 'Gospel', q: [{ tag: 'gospel' }] },
-  { id: 'talk', label: 'Talk', q: [{ tag: 'talk' }] },
-  { id: 'news', label: 'News', q: [{ tag: 'news' }] },
-  { id: 'sports', label: 'Sports', q: [{ tag: 'sports' }] },
-  { id: 'spanish', label: 'Spanish', q: [{ language: 'spanish' }] },
+  { id: 'all', label: 'All' },
+  { id: 'rock', label: 'Rock', tags: ['rock'] },
+  { id: 'classicrock', label: 'Classic Rock', tags: ['classic rock'] },
+  { id: '90s', label: '90s', tags: ['90s', "90's"] },
+  { id: 'alternative', label: 'Alternative', tags: ['alternative'] },
+  { id: 'indie', label: 'Indie', tags: ['indie'] },
+  { id: 'country', label: 'Country', tags: ['country'] },
+  { id: 'bluegrass', label: 'Bluegrass', tags: ['bluegrass'] },
+  { id: 'hiphop', label: 'Hip-Hop', tags: ['hip hop', 'hiphop', 'hip-hop'], exact: ['rap'] },
+  { id: 'oldies', label: 'Oldies', tags: ['oldies'] },
+  { id: 'christian', label: 'Christian', tags: ['christian'] },
+  { id: 'gospel', label: 'Gospel', tags: ['gospel'] },
+  { id: 'talk', label: 'Talk', tags: ['talk'] },
+  { id: 'news', label: 'News', tags: ['news'] },
+  { id: 'sports', label: 'Sports', tags: ['sports', 'sport'] },
+  { id: 'spanish', label: 'Spanish', langs: ['spanish', 'español', 'espanol'] },
   { id: 'fav', label: 'Favorites', fav: true },
 ];
 
@@ -217,10 +217,13 @@ let cat = CATS[0], catCursor = 0, focusCats = false;
 let spots = [];            // [{lat, lon, x, y, stations:[...]}]
 let tuned = null, stIdx = 0, current = null;
 let started = false, playing = false, loading = false;
-const cache = new Map();
 const favs = loadFavs();
-const httpsOnly = location.protocol === 'https:';
+// Inside the Bent Steering Fire Stick app the page may play plain http:// streams; a secure web page
+// can't, so those stations are left out in a browser.
+const inApp = /BSOTV/i.test(navigator.userAgent) || !!window.BSOApp;
+const httpsOnly = location.protocol === 'https:' && !inApp;
 const canHls = !!audio.canPlayType('application/vnd.apple.mpegurl');
+const canMse = !!(window.MediaSource || window.ManagedMediaSource);   // HLS via hls.js where there's no built-in HLS
 
 /* ---------- projection (Web Mercator) ---------- */
 const D2R = Math.PI / 180;
@@ -293,14 +296,15 @@ function draw() {
 }
 
 /* ---------- stations ---------- */
-const HOSTS = ['de1', 'nl1', 'at1', 'de2', 'fi1'].sort(() => Math.random() - .5);
+// Live Radio Browser servers (at1, fi1 and nl1 have gone away); "all" is their round-robin address.
+const HOSTS = [...['de1', 'de2'].sort(() => Math.random() - .5), 'all'];
 let goodHost = null;
-async function api(path) {
+async function api(path, ms) {
   const order = goodHost ? [goodHost, ...HOSTS.filter((h) => h !== goodHost)] : HOSTS;
   let lastErr;
   for (const h of order) {
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 12000);
+    const t = setTimeout(() => ctl.abort(), ms || 12000);
     try {
       const r = await fetch(`https://${h}.api.radio-browser.info${path}`, { signal: ctl.signal });
       clearTimeout(t);
@@ -312,45 +316,114 @@ async function api(path) {
   }
   throw lastErr || new Error('No server answered');
 }
-function searchPath(q, limit) {
-  const p = new URLSearchParams({ has_geo_info: 'true', hidebroken: 'true', order: 'clickcount', reverse: 'true', limit: String(limit) });
-  for (const [k, v] of Object.entries(q)) p.set(k, v);
+function usable(s) {
+  const u = s.url_resolved || s.url;
+  if (!u || !/^https?:/i.test(u)) return false;
+  if (httpsOnly && !u.startsWith('https:')) return false;
+  if (s.hls && !canHls && !canMse) return false;
+  const geo = typeof s.geo_lat === 'number' && typeof s.geo_long === 'number' && !(s.geo_lat === 0 && s.geo_long === 0);
+  return geo || !!s.countrycode;                       // no coordinates: placed in its state or country
+}
+function slim(s) {
+  const geo = typeof s.geo_lat === 'number' && typeof s.geo_long === 'number' && !(s.geo_lat === 0 && s.geo_long === 0);
+  return {
+    id: s.stationuuid, name: (s.name || '').trim() || 'Unnamed station', url: s.url_resolved || s.url,
+    glat: geo ? s.geo_lat : null, glon: geo ? s.geo_long : null, state: (s.state || '').trim(), country: s.country || '', cc: (s.countrycode || '').toUpperCase(),
+    tags: (s.tags || '').toLowerCase(), lang: (s.language || '').toLowerCase(), codec: s.codec || '', bitrate: s.bitrate || 0,
+    favicon: s.favicon || '', clicks: s.clickcount || 0, hls: !!s.hls,
+  };
+}
+
+/* The whole Radio Browser directory, most-listened first: the first page comes in fast so the map is
+   usable right away, the rest streams in behind it, and the list is kept on the device for 3 days. */
+const FIRST = 1500, PAGE = 5000, MAX_PAGES = 30, KEEP_MS = 3 * 86400000;
+let all = [], placed = [], allDone = false;
+function idb() {
+  return new Promise((res, rej) => {
+    try { const r = indexedDB.open('jrdio', 1); r.onupgradeneeded = () => r.result.createObjectStore('kv'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }
+    catch (e) { rej(e); }
+  });
+}
+async function idbGet(k) { try { const db = await idb(); return await new Promise((res) => { const q = db.transaction('kv').objectStore('kv').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(null); }); } catch (e) { return null; } }
+async function idbSet(k, v) { try { const db = await idb(); db.transaction('kv', 'readwrite').objectStore('kv').put(v, k); } catch (e) { /* storage off: reload next time */ } }
+
+function pagePath(offset, limit) {
+  const p = new URLSearchParams({ hidebroken: 'true', order: 'clickcount', reverse: 'true', offset: String(offset), limit: String(limit) });
   if (httpsOnly) p.set('is_https', 'true');
   return '/json/stations/search?' + p.toString();
 }
-function usable(s) {
-  if (typeof s.geo_lat !== 'number' || typeof s.geo_long !== 'number') return false;
-  if (s.geo_lat === 0 && s.geo_long === 0) return false;
-  const u = s.url_resolved || s.url;
-  if (!u) return false;
-  if (httpsOnly && !u.startsWith('https:')) return false;
-  if (s.hls && !canHls) return false;
-  return true;
-}
-function slim(s) {
-  return {
-    id: s.stationuuid, name: (s.name || '').trim() || 'Unnamed station', url: s.url_resolved || s.url,
-    lat: s.geo_lat, lon: s.geo_long, state: s.state || '', country: s.country || '', cc: s.countrycode || '',
-    tags: s.tags || '', codec: s.codec || '', bitrate: s.bitrate || 0, favicon: s.favicon || '', clicks: s.clickcount || 0,
-  };
-}
-async function loadCategory(c) {
-  if (c.fav) return Object.values(favs);
-  if (cache.has(c.id)) return cache.get(c.id);
-  const limit = c.id === 'all' ? 3000 : 1500;
-  const parts = await Promise.all(c.q.map((q) => api(searchPath(q, limit)).catch(() => [])));
-  const seen = new Set(), out = [];
-  for (const list of parts) for (const s of list) {
-    if (!s || seen.has(s.stationuuid) || !usable(s)) continue;
-    seen.add(s.stationuuid); out.push(slim(s));
+async function fetchAll(quiet) {
+  const out = [], seen = new Set();
+  let offset = 0;
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const limit = page ? PAGE : FIRST;
+    let list;
+    try { list = await api(pagePath(offset, limit), 60000); }
+    catch (e) { if (!out.length && !quiet) throw e; break; }
+    for (const st of list) if (st && !seen.has(st.stationuuid) && usable(st)) { seen.add(st.stationuuid); out.push(slim(st)); }
+    offset += limit;
+    if (!quiet) { all = out; place(); refresh(page === 0); setCount(); }
+    if (list.length < limit) break;
   }
-  if (!out.length && parts.every((p) => !p.length)) throw new Error('empty');
-  cache.set(c.id, out);
-  return out;
+  all = out; allDone = true; place(); refresh(false); setCount();
+  idbSet('stations', { t: Date.now(), httpsOnly, list: out });
+}
+async function boot() {
+  const saved = await idbGet('stations');
+  if (saved && saved.list && saved.list.length && saved.httpsOnly === httpsOnly && Date.now() - saved.t < KEEP_MS) {
+    all = saved.list; allDone = true; place(); refresh(true); setCount();
+    if (Date.now() - saved.t > 86400000) fetchAll(true).catch(() => {});   // freshen quietly once a day
+    return;
+  }
+  try { await fetchAll(false); }
+  catch (e) { showOverlay("Can't reach the stations", 'The station directory did not answer. Check the internet connection, then try again.', () => { hideOverlay(); boot(); }); }
+}
+
+/* Stations without coordinates go in their state (or country): spread out around the middle of where
+   that area's mapped stations actually are, biggest stations nearest the middle, kept on land. */
+function median(a) { a.sort((x, y) => x - y); const m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function place() {
+  const pts = new Map();
+  const add = (k, s) => { let p = pts.get(k); if (!p) pts.set(k, p = { la: [], lo: [] }); p.la.push(s.glat); p.lo.push(s.glon); };
+  for (const s of all) if (s.glat !== null) { add(s.cc, s); if (s.state) add(s.cc + '|' + s.state.toLowerCase(), s); }
+  const centre = new Map();
+  for (const [k, p] of pts) centre.set(k, { lat: median(p.la), lon: median(p.lo), n: p.la.length });
+  const groups = new Map();
+  placed = [];
+  for (const s of all) {
+    if (s.glat !== null) { s.lat = s.glat; s.lon = s.glon; s.approx = false; placed.push(s); continue; }
+    const sk = s.state ? s.cc + '|' + s.state.toLowerCase() : '';
+    const k = sk && centre.has(sk) ? sk : centre.has(s.cc) ? s.cc : '';
+    if (!k) continue;                                  // nowhere to put it on the map
+    let g = groups.get(k); if (!g) groups.set(k, g = []); g.push(s);
+  }
+  const GA = Math.PI * (3 - Math.sqrt(5));            // golden angle
+  for (const [k, g] of groups) {
+    const c = centre.get(k), cosLat = Math.max(0.2, Math.cos(c.lat * D2R));
+    const gap = k.includes('|') ? 0.045 : 0.08;          // tighter inside a state than a whole country
+    let slot = 0;
+    for (const s of g) {
+      let lat = c.lat, lon = c.lon;
+      for (let tries = 0; tries < 40; tries++, slot++) {
+        const r = gap * Math.sqrt(slot + 0.5), a = slot * GA;
+        lat = c.lat + r * Math.sin(a); lon = c.lon + r * Math.cos(a) / cosLat;
+        if (isLand(lat, lon)) break;
+      }
+      slot++;
+      s.lat = lat; s.lon = wrapLon(lon); s.approx = true;
+      placed.push(s);
+    }
+  }
+}
+function matches(c, s) {
+  if (c.langs) return c.langs.some((l) => s.lang.includes(l));
+  const tags = s.tags.split(',').map((t) => t.trim());
+  return (c.tags || []).some((t) => tags.some((x) => x.includes(t))) || (c.exact || []).some((t) => tags.includes(t));
 }
 function buildSpots(list) {
   const m = new Map();
   for (const s of list) {
+    if (typeof s.lat !== 'number') continue;
     const key = s.lat.toFixed(2) + ',' + s.lon.toFixed(2);
     let sp = m.get(key);
     if (!sp) { sp = { lat: s.lat, lon: s.lon, stations: [] }; m.set(key, sp); }
@@ -359,27 +432,30 @@ function buildSpots(list) {
   for (const sp of m.values()) sp.stations.sort((a, b) => b.clicks - a.clicks);
   return [...m.values()];
 }
-async function selectCategory(c) {
+let shown = 0;
+function refresh(retune) {
+  const list = cat.fav ? Object.values(favs) : cat.id === 'all' ? placed : placed.filter((s) => matches(cat, s));
+  shown = list.length;
+  const keep = tuned && tuned.stations[stIdx];
+  spots = buildSpots(list);
+  if (keep && !retune) tuned = spots.find((sp) => sp.stations.some((s) => s.id === keep.id)) || tuned;
+  if (retune) tuned = null;
+  hideOverlay();
+  requestDraw();
+  if (retune) settle(true);
+}
+function setCount() {
+  const n = shown;
+  if (!all.length && !allDone) { els.count.textContent = 'Loading stations…'; return; }
+  if (cat.fav) { els.count.textContent = n ? n.toLocaleString() + ' favorite' + (n === 1 ? '' : 's') : 'No favorites yet — tap the heart'; return; }
+  const more = allDone ? '' : ' · loading more…';
+  els.count.textContent = n.toLocaleString() + ' live stations' + (cat.id === 'all' ? '' : ' · ' + cat.label) + more;
+}
+function selectCategory(c) {
   cat = c;
   renderCats();
-  loading = true;
-  els.count.textContent = 'Loading ' + c.label + '…';
-  try {
-    const list = await loadCategory(c);
-    if (cat !== c) return;
-    spots = buildSpots(list);
-    const n = list.length;
-    els.count.textContent = c.fav
-      ? (n ? n.toLocaleString() + ' favorite' + (n === 1 ? '' : 's') : 'No favorites yet — tap the heart')
-      : n.toLocaleString() + ' live stations' + (c.id === 'all' ? '' : ' · ' + c.label);
-    hideOverlay();
-    tuned = null;
-    requestDraw();
-    settle(true);
-  } catch (e) {
-    if (cat !== c) return;
-    showOverlay("Can't reach the stations", 'The station directory did not answer. Check the internet connection, then try again.', () => selectCategory(c));
-  } finally { loading = false; }
+  refresh(true);
+  setCount();
 }
 
 /* ---------- tuning ---------- */
@@ -436,6 +512,18 @@ function extraOf(s) {
 
 /* ---------- playback ---------- */
 let stallTimer = 0, playToken = 0;
+const HLS_SRC = 'https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.6.16/hls.light.min.js';
+let hls = null, hlsLoading = null;
+function loadHls() {
+  if (window.Hls) return Promise.resolve();
+  if (!hlsLoading) hlsLoading = new Promise((res, rej) => {
+    const sc = document.createElement('script'); sc.src = HLS_SRC; sc.onload = res;
+    sc.onerror = () => { hlsLoading = null; rej(new Error('hls.js')); };
+    document.head.appendChild(sc);
+  });
+  return hlsLoading;
+}
+function stopHls() { if (hls) { try { hls.destroy(); } catch (e) { /* gone */ } hls = null; } }
 function setStatus(t) { els.status.textContent = t; }
 function setPlayingUI(on) {
   playing = on;
@@ -458,9 +546,22 @@ function playStation(st) {
   setStatus('TUNING…');
   setPlayingUI(false);
   clearTimeout(stallTimer);
-  audio.src = st.url;
-  const p = audio.play();
-  if (p && p.catch) p.catch(() => { if (token === playToken) offline(token); });
+  stopHls();
+  const start = () => { const p = audio.play(); if (p && p.catch) p.catch(() => { if (token === playToken) offline(token); }); };
+  if ((st.hls || /\.m3u8(\?|$)/i.test(st.url)) && !canHls) {
+    audio.removeAttribute('src');
+    loadHls().then(() => {
+      if (token !== playToken) return;
+      if (!window.Hls || !Hls.isSupported()) { offline(token); return; }
+      hls = new Hls({ enableWorker: true, lowLatencyMode: false });
+      hls.on(Hls.Events.ERROR, (ev, d) => { if (d && d.fatal && token === playToken) offline(token); });
+      hls.loadSource(st.url); hls.attachMedia(audio);
+      start();
+    }).catch(() => offline(token));
+  } else {
+    audio.src = st.url;
+    start();
+  }
   stallTimer = setTimeout(() => { if (token === playToken && !playing) offline(token); }, 12000);
   api('/json/url/' + encodeURIComponent(st.id)).catch(() => {});
 }
@@ -477,7 +578,7 @@ function offline(token) {
 audio.addEventListener('playing', () => { clearTimeout(stallTimer); setPlayingUI(true); setStatus('ON AIR' + (cat.id === 'all' || cat.fav ? '' : ' · ' + cat.label.toUpperCase())); });
 audio.addEventListener('waiting', () => { if (current) setStatus('BUFFERING…'); });
 audio.addEventListener('pause', () => { if (current && !audio.ended) { setPlayingUI(false); setStatus('PAUSED'); } });
-audio.addEventListener('error', () => offline(playToken));
+audio.addEventListener('error', () => { if (audio.error && !hls) offline(playToken); });
 
 function okPressed() {
   if (focusCats) { selectCategory(CATS[catCursor]); setFocusCats(false); return; }
@@ -495,6 +596,7 @@ function okPressed() {
 function togglePlay() {
   if (!current) { okPressed(); return; }
   if (playing) { audio.pause(); }
+  else if (hls) { const tok = playToken; setStatus('TUNING…'); const p = audio.play(); if (p && p.catch) p.catch(() => offline(tok)); }
   else { const tok = ++playToken; setStatus('TUNING…'); audio.load(); const p = audio.play(); if (p && p.catch) p.catch(() => offline(tok)); }
 }
 
@@ -511,7 +613,7 @@ function toggleFav() {
   if (!st) return;
   if (favs[st.id]) { delete favs[st.id]; toast('Removed from favorites'); } else { favs[st.id] = st; toast('Saved to favorites'); }
   saveFavs(); setFavUI(st);
-  if (cat.fav) { cache.delete('fav'); selectCategory(cat); }
+  if (cat.fav) selectCategory(cat);
 }
 
 /* ---------- moving the map ---------- */
@@ -669,7 +771,8 @@ if (window.matchMedia && matchMedia('(pointer: coarse)').matches) {
 window.addEventListener('resize', resize);
 resize();
 renderCats();
-selectCategory(CATS[0]);
+setCount();
+boot();
 })();
 </script>
 </body>
