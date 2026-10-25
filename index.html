@@ -34,6 +34,7 @@ body.tapyt #touch{pointer-events:none}
 #tapchip{position:fixed;left:50%;top:6%;transform:translateX(-50%);z-index:9;padding:.9rem 1.6rem;border-radius:1rem;background:var(--panel-solid);box-shadow:inset 0 0 0 1px var(--line),0 1rem 2rem rgba(0,0,0,.5);
   font-family:'Saira Condensed',sans-serif;font-size:1.5rem;font-weight:700;letter-spacing:.14em;text-align:center;pointer-events:none;display:none}
 body.tapyt #tapchip{display:block}
+body.tapgo #tapchip{display:none}
 #tapchip small{display:block;margin-top:.2rem;font-size:1rem;letter-spacing:.08em;color:var(--muted);font-weight:600}
 #dbg{position:fixed;left:.5rem;top:.5rem;z-index:40;max-width:70vw;margin:0;padding:.5rem .7rem;border-radius:.4rem;background:rgba(0,0,0,.8);color:#9fe39f;font:1rem/1.35 monospace;white-space:pre-wrap;pointer-events:none}
 #dbg[hidden]{display:none}
@@ -595,13 +596,22 @@ function play(ch, ids, live) {
 }
 // Safari wouldn't start the video: show YouTube's own player and let the next tap land on it.
 function needTap() {
-  if (document.body.classList.contains('tapyt')) return;
+  if (document.body.classList.contains('tapyt')) { document.body.classList.remove('tapgo'); return; }
   dbg('needs a tap on the player');
   unlocked = false;
   els.stat.classList.remove('on'); hideNotice(); clearTimeout(watchdog);
   document.body.classList.add('tapyt');
 }
-function tapDone() { if (document.body.classList.contains('tapyt')) { document.body.classList.remove('tapyt'); dbg('tap worked'); } unlocked = true; }
+// The video started from the tap. Keep the tap going to YouTube a moment longer: if BSO TV takes the screen
+// back while the finger is still down, YouTube never sees the tap end and its pause button stays on the picture.
+function tapDone() {
+  unlocked = true;
+  const b = document.body;
+  if (!b.classList.contains('tapyt') || b.classList.contains('tapgo')) return;
+  b.classList.add('tapgo');                    // the "tap the video" note goes now
+  dbg('tap worked');
+  setTimeout(() => { b.classList.remove('tapyt'); b.classList.remove('tapgo'); }, 3000);
+}
 function next(live) {
   const ch = CHANNELS[chIndex], ids = ch.ids || playlists.get(ch.id) || [];
   if (!prog || !ids.length) return;
