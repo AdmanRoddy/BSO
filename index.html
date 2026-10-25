@@ -18,11 +18,12 @@ html,body{margin:0;height:100%;background:#000;color:var(--ink);overflow:hidden;
 button{font:inherit;color:inherit}
 button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
 
-#stage{position:fixed;inset:0;background:#000}
+#stage{position:fixed;inset:0;background:#000;overflow:hidden}
 #player,#stage iframe{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none}
 #touch{position:fixed;inset:0;touch-action:none}
 
-.bug{position:fixed;right:3rem;top:2.5rem;width:13rem;opacity:.42;pointer-events:none}
+.bug{position:fixed;right:3rem;top:2.5rem;width:13rem;opacity:0;pointer-events:none;transition:opacity .35s ease}
+body.ui .bug{opacity:.42}      /* the logo shows with the info banner, not over the show */
 
 /* boot */
 #boot{position:fixed;inset:0;z-index:20;background:var(--bg);display:grid;place-items:center;overflow:hidden}
@@ -67,6 +68,10 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
 .ch-btns button{width:4rem;height:4rem;border:0;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;cursor:pointer}
 .ch-btns button.wide{width:auto;padding:0 1.4rem;border-radius:2rem;font-family:'Saira Condensed',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:.16em}
 .ch-btns svg{width:1.6rem;height:1.6rem}
+.ch-btns button.on{background:#fff;color:#0A1638}
+.row.setting.first{margin-top:1rem;box-shadow:inset 0 1px 0 var(--line)}
+.row .state{flex:0 0 auto;padding:.1rem .55rem;border-radius:.35rem;background:rgba(255,255,255,.14);font-family:'Saira Condensed',sans-serif;font-size:1rem;font-weight:700;letter-spacing:.16em}
+.row .state.on{background:var(--blue);color:#fff}
 .hint{position:fixed;right:3.5rem;bottom:calc(3rem + 11.5rem);z-index:5;font-family:'Saira Condensed',sans-serif;font-size:1.2rem;font-weight:700;letter-spacing:.14em;color:var(--muted);
   display:flex;gap:.75rem;align-items:center;transition:opacity .35s ease;text-shadow:0 1px 6px rgba(0,0,0,.8)}
 .hint .key{padding:.12rem .6rem;border-radius:.4rem;box-shadow:inset 0 0 0 .13rem rgba(255,255,255,.35);color:#fff}
@@ -122,7 +127,8 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
   .banner{left:.75rem;right:.75rem;bottom:calc(.75rem + env(safe-area-inset-bottom));flex-wrap:wrap}
   .ch-num{min-width:6.5rem;padding:1rem} .ch-num b{font-size:2.6rem} .ch-num small{font-size:.9rem}
   .ch-info{padding:1rem 1.1rem} .ch-name{font-size:1.5rem} .ch-title{font-size:1.05rem}
-  .ch-btns{width:100%;justify-content:space-between;padding:0 1rem 1rem}
+  .ch-btns{width:100%;justify-content:space-between;gap:.4rem;padding:0 1rem 1rem}
+  .ch-btns button.wide{padding:0 .85rem}
   .hint{display:none}
   .ab-title{font-size:2.6rem} .ab-sub{font-size:1.15rem} .ab-ch{font-size:.95rem} .ab-note{font-size:.85rem;bottom:1.5rem}
 }
@@ -155,6 +161,7 @@ button:focus-visible{outline:.25rem solid var(--ink);outline-offset:.2rem}
     <button id="btn-down" aria-label="Channel down"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
     <button id="btn-up" aria-label="Channel up"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6"/></svg></button>
     <button id="btn-restart" class="wide" aria-label="Restart this video from the beginning">RESTART</button>
+    <button id="btn-cc" class="wide" aria-pressed="false" aria-label="Captions">CC</button>
     <button id="btn-guide" class="wide">GUIDE</button>
     <button id="btn-sound" class="wide">SOUND ON</button>
   </div>
@@ -222,6 +229,8 @@ const playlists = new Map();            // channel id -> [video ids]
 const bad = new Set(store.get('bad', []));
 try { Object.keys(localStorage).forEach((k) => { if (k.startsWith('bsotv:pl:')) localStorage.removeItem(k); }); } catch (e) { /* old all-uploads cache */ }
 let cueWaiter = null, guideOpen = false, guideCursor = 0, muted = false;
+let ccOn = !!store.get('cc', false);    // captions: off unless turned on with the CC button
+let resume = null;                      // what was playing when the player was rebuilt for captions
 let watchdog = 0, ytBlocked = false;
 
 /* ---------- schedule ---------- */
@@ -237,17 +246,70 @@ function liveOffset(dur) {
 }
 
 /* ---------- YouTube player ---------- */
-window.onYouTubeIframeAPIReady = () => {
-  apiReady = true;
-  player = new YT.Player('player', {
-    width: '100%', height: '100%',
-    playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, rel: 0, playsinline: 1, origin: location.origin },
-    events: { onReady, onStateChange, onError },
-  });
-};
+// YouTube only honours "captions on" when its player is built (cc_load_policy), so the CC button
+// rebuilds the player and picks the same video back up where it was.
+function makePlayer() {
+  const vars = { autoplay: 0, controls: 0, disablekb: 1, fs: 0, iv_load_policy: 3, modestbranding: 1, rel: 0, playsinline: 1, origin: location.origin };
+  if (ccOn) Object.assign(vars, { cc_load_policy: 1, cc_lang_pref: 'en' });
+  player = new YT.Player('player', { width: '100%', height: '100%', playerVars: vars, events: { onReady, onStateChange, onError } });
+}
+window.onYouTubeIframeAPIReady = () => { apiReady = true; makePlayer(); };
+// YouTube draws its own title bar, "More videos" strip and logo along the top and bottom edges of its
+// frame. The frame is made exactly as wide as the picture and taller than the screen, so those edges
+// sit just off-screen while the picture itself stays fully in view. That needs the video's shape
+// (widescreen vs. old 4:3 TV), which YouTube's public oEmbed lookup gives.
+let aspect = 16 / 9;
+const aspects = new Map(store.get('ar', []));
+let fillOn = store.get('fill', true) !== false;   // Picture: FILL (no black bars on a TV) or FIT (whole picture)
+function fitStage() {
+  const f = $('player');
+  if (!f) return;
+  const W = window.innerWidth, H = window.innerHeight;
+  const pad = Math.round(Math.max(90, H * 0.14));
+  // FILL zooms the picture to cover a landscape screen (old 4:3 shows lose a little off the top and
+  // bottom); a phone held upright always fits, since covering it would crop most of the picture.
+  const cover = fillOn && W >= H && aspect > 1.1 && aspect < 2.5;
+  let w, h;
+  if ((W / H > aspect) === cover) { w = W; h = W / aspect; } else { h = H; w = H * aspect; }
+  w = Math.round(w); h = Math.round(h);
+  // The frame is as wide as the picture and reaches past the top and bottom of the screen, so YouTube's
+  // bars sit off-screen; YouTube fits the picture to the frame's width and centres it.
+  const fh = Math.max(H, h) + 2 * pad;
+  Object.assign(f.style, { left: Math.round((W - w) / 2) + 'px', top: Math.round((H - fh) / 2) + 'px', right: 'auto', bottom: 'auto', width: w + 'px', height: fh + 'px' });
+}
+window.addEventListener('resize', fitStage);
+fitStage();
+function setAspect(ar) { if (ar > 0.3 && ar < 4 && Math.abs(ar - aspect) > 0.01) { aspect = ar; fitStage(); } }
+async function shapeFor(vid) {
+  if (aspects.has(vid)) { setAspect(aspects.get(vid)); return; }
+  setAspect(16 / 9);
+  try {
+    const r = await fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent('https://www.youtube.com/watch?v=' + vid));
+    if (!r.ok) return;
+    const j = await r.json();
+    if (!j.width || !j.height) return;
+    const ar = j.width / j.height;
+    aspects.set(vid, ar);
+    store.set('ar', [...aspects].slice(-600));
+    if (prog && prog.vid === vid) setAspect(ar);
+  } catch (e) { /* keep widescreen */ }
+}
+// YouTube turns on its auto-generated captions by itself; keep them off.
+function captionsOff() {
+  if (!player) return;
+  try { player.setOption('captions', 'track', {}); } catch (e) { /* no captions */ }
+  try { player.unloadModule('captions'); } catch (e) { /* no captions module */ }
+  try { player.unloadModule('cc'); } catch (e) { /* older player */ }
+}
+// Show the picture once YouTube's own play button and title have faded (they flash for a moment
+// whenever a video starts or jumps), unless a commercial break is covering the screen.
+const REVEAL_DELAY = 2000;
+function reveal() { if (!adOn) els.stat.classList.remove('on'); }
+
 function onReady() {
   const f = player.getIframe && player.getIframe();
   if (f) { f.setAttribute('tabindex', '-1'); f.setAttribute('aria-hidden', 'true'); }
+  fitStage();
   // YouTube's player announces its ads with events that aren't in its public docs.
   // If YouTube ever drops them, ads simply show as before.
   try {
@@ -255,6 +317,15 @@ function onReady() {
     player.addEventListener('onAdEnd', () => adBreak(false));
     player.addEventListener('onAdStateChange', (e) => { if (e && e.data === -1) adBreak(false); else if (e && (e.data === 1 || e.data === 3)) adBreak(true); });
   } catch (err) { /* no ad events: nothing to cover */ }
+  if (resume && started && resume.ch === chIndex) {
+    const r = resume; resume = null;
+    prog = { seq: r.seq, tries: 0, token: ++token, live: false, vid: r.vid, seeked: false, pinned: r.pinned };
+    shapeFor(r.vid);
+    player.loadVideoById({ videoId: r.vid, startSeconds: r.t });
+    if (muted) player.mute(); else player.unMute();
+    return;
+  }
+  resume = null;
   if (started) tune(chIndex, true);
 }
 function onStateChange(e) {
@@ -262,15 +333,23 @@ function onStateChange(e) {
   if (cueWaiter && (s === YT.PlayerState.CUED || s === YT.PlayerState.UNSTARTED)) { cueWaiter(); return; }
   if (!prog || prog.token !== token) return;
   if (s === YT.PlayerState.PLAYING) {
-    els.stat.classList.remove('on'); hideNotice();
+    hideNotice();
     if (!prog.seeked) {
       const d = player.getDuration() || 0;
       const data = player.getVideoData ? player.getVideoData() : {};
-      if (d < MIN_LEN || (data && data.isLive)) { markBad(prog.vid); return next(prog.live); }
+      if (d < MIN_LEN || (data && data.isLive)) { markBad(prog.vid); return next(prog.live); }   // tuning screen stays up while skipping
       prog.seeked = true;
+      const my = prog.token, vid = prog.vid;
+      if (!ccOn) {
+        captionsOff();
+        setTimeout(() => { if (prog && prog.vid === vid && !ccOn) captionsOff(); }, 1500);
+        setTimeout(() => { if (prog && prog.vid === vid && !ccOn) captionsOff(); }, 4000);
+      }
       if (prog.live) player.seekTo(liveOffset(d), true);
       showInfo();
-    }
+      prog.revealAt = Date.now() + REVEAL_DELAY;
+      setTimeout(() => { if (prog && prog.token === my && prog.vid === vid) reveal(); }, REVEAL_DELAY);
+    } else if (!prog.revealAt || Date.now() >= prog.revealAt) reveal();
   } else if (s === YT.PlayerState.ENDED) {
     next(false);
   }
@@ -346,6 +425,7 @@ function adBreak(on, now) {
     if (player && player.mute) player.mute();
     adFailsafe = setTimeout(() => adBreak(false), 4 * 60000);   // never leave the slate stuck up
   } else {
+    if (prog && prog.token === token && !prog.seeked) els.stat.classList.add('on');   // show starts behind the tuning screen
     els.ad.classList.remove('on');
     if (player && player.unMute && !muted) player.unMute();
   }
@@ -383,6 +463,7 @@ function play(ch, ids, live) {
   const vid = pickVideo(ch, ids, prog.seq);
   prog.vid = vid; prog.seeked = false; prog.live = live; prog.pinned = false;
   adBreak(false, true);
+  shapeFor(vid);
   player.loadVideoById({ videoId: vid });
   if (muted) player.mute(); else player.unMute();
 }
@@ -438,9 +519,9 @@ function updateProgress() {
 }
 let bannerTimer = 0;
 function showBanner() {
-  els.banner.classList.remove('hide'); els.hint.classList.remove('hide');
+  els.banner.classList.remove('hide'); els.hint.classList.remove('hide'); document.body.classList.add('ui');
   clearTimeout(bannerTimer);
-  bannerTimer = setTimeout(() => { if (!guideOpen) { els.banner.classList.add('hide'); els.hint.classList.add('hide'); } }, 6000);
+  bannerTimer = setTimeout(() => { if (!guideOpen) { els.banner.classList.add('hide'); els.hint.classList.add('hide'); document.body.classList.remove('ui'); } }, 6000);
 }
 function showNotice(t, x) { els.nTitle.textContent = t; els.nText.textContent = x; els.notice.hidden = false; }
 function hideNotice() { els.notice.hidden = true; }
@@ -455,6 +536,16 @@ function renderGuide() {
       b.addEventListener('click', () => { closeGuide(); start(); tune(i); });
       els.list.appendChild(b);
     });
+    SETTINGS.forEach((st, j) => {
+      const b = document.createElement('button');
+      b.className = 'row setting' + (j ? '' : ' first'); b.type = 'button'; b.dataset.setting = st.key;
+      b.innerHTML = '<span class="n"></span><span class="t"></span><span class="state"></span>';
+      b.querySelector('.n').textContent = st.tag;
+      b.querySelector('.t').textContent = st.label;
+      b.addEventListener('click', st.toggle);
+      els.list.appendChild(b);
+    });
+    setSettingLabels();
   }
   [...els.list.children].forEach((b, i) => {
     b.classList.toggle('cursor', guideOpen && i === guideCursor);
@@ -469,8 +560,16 @@ function openGuide() { guideOpen = true; guideCursor = chIndex; els.guide.classL
 function closeGuide() { guideOpen = false; els.guide.classList.remove('open'); renderGuide(); }
 
 /* ---------- start (needs one press/tap so the browser allows sound) ---------- */
+function goFullscreen() {
+  const el = document.documentElement;
+  if (document.fullscreenElement || document.webkitFullscreenElement) return;
+  const req = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!req) return;                                    // e.g. iPhone Safari: no page fullscreen
+  try { const r = req.call(el, { navigationUI: 'hide' }); if (r && r.catch) r.catch(() => {}); } catch (e) { /* not allowed here */ }
+}
 function start() {
   if (started) return;
+  goFullscreen();
   started = true;
   els.boot.hidden = true;
   tune(chIndex);           // shows the tuning screen; plays now, or once the player is ready
@@ -494,6 +593,34 @@ function togglePause() {
   else { player.playVideo(); setBanner(CHANNELS[chIndex], els.title.textContent, playingBadge()); }
   showBanner();
 }
+// Settings at the bottom of the guide, so the Fire Stick remote can reach them (▼ past the last channel, OK).
+const SETTINGS = [
+  { key: 'cc', tag: 'CC', label: 'Captions', get: () => ccOn, on: 'ON', off: 'OFF', toggle: () => toggleCaptions() },
+  { key: 'fill', tag: '\u25A3', label: 'Picture', get: () => fillOn, on: 'FILL', off: 'FIT', toggle: () => toggleFill() },
+];
+function setSettingLabels() {
+  const b = $('btn-cc');
+  b.classList.toggle('on', ccOn); b.setAttribute('aria-pressed', String(ccOn));
+  SETTINGS.forEach((st) => {
+    const el = els.list.querySelector('[data-setting="' + st.key + '"] .state');
+    if (el) { el.textContent = st.get() ? st.on : st.off; el.classList.toggle('on', st.get()); }
+  });
+}
+function toggleFill() { fillOn = !fillOn; store.set('fill', fillOn); setSettingLabels(); fitStage(); showBanner(); }
+function toggleCaptions() {
+  ccOn = !ccOn; store.set('cc', ccOn); setSettingLabels(); showBanner();
+  if (!player || !apiReady) return;
+  if (prog && prog.seeked && prog.token === token && player.getCurrentTime) {
+    resume = { ch: chIndex, vid: prog.vid, t: Math.max(0, player.getCurrentTime() - 1), seq: prog.seq, pinned: !!prog.pinned };
+  }
+  token++;                                   // ignore anything the old player still reports
+  try { player.destroy(); } catch (e) { /* already gone */ }
+  player = null; adBreak(false, true);
+  if (!$('player')) { const d = document.createElement('div'); d.id = 'player'; $('stage').appendChild(d); }
+  fitStage();
+  if (started) { els.stat.classList.add('on'); els.tuning.textContent = ccOn ? 'CAPTIONS ON' : 'CAPTIONS OFF'; }
+  makePlayer();                              // onReady picks the show back up
+}
 function toggleSound() {
   if (!player) return;
   muted = !muted;
@@ -503,13 +630,15 @@ function toggleSound() {
 }
 window.addEventListener('keydown', (e) => {
   const k = e.key, code = e.keyCode;
+  if (started && (k === 'Enter' || code === 23)) goFullscreen();
   if (!started) {
     if (k === 'Enter' || k === ' ' || code === 23 || code === 179) { e.preventDefault(); start(); }
     return;
   }
   if (guideOpen) {
     if (k === 'ArrowUp') guideCursor = Math.max(0, guideCursor - 1);
-    else if (k === 'ArrowDown') guideCursor = Math.min(CHANNELS.length - 1, guideCursor + 1);
+    else if (k === 'ArrowDown') guideCursor = Math.min(CHANNELS.length + SETTINGS.length - 1, guideCursor + 1);   // settings below the channels
+    else if ((k === 'Enter' || k === ' ') && guideCursor >= CHANNELS.length) SETTINGS[guideCursor - CHANNELS.length].toggle();
     else if (k === 'Enter' || k === ' ') { closeGuide(); tune(guideCursor); }
     else if (k === 'ArrowLeft' || k === 'Escape' || k === 'Backspace' || k === 'GoBack' || code === 4) closeGuide();
     else return;
@@ -525,6 +654,8 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'MediaFastForward' || code === 228) { player.seekTo(player.getCurrentTime() + 30, true); showBanner(); }
   else if (k === 'MediaRewind' || code === 227) { player.seekTo(Math.max(0, player.getCurrentTime() - 30), true); showBanner(); }
   else if (k === 'm') toggleSound();
+  else if (k === 'c') toggleCaptions();
+  else if (k === 'z') toggleFill();
   else if (/^[0-9]$/.test(k)) typeNumber(k);
   else return;
   e.preventDefault();
@@ -548,6 +679,7 @@ $('btn-down').addEventListener('click', () => tune(chIndex - 1));
 $('btn-restart').addEventListener('click', restart);
 $('btn-guide').addEventListener('click', () => (guideOpen ? closeGuide() : openGuide()));
 els.sound.addEventListener('click', toggleSound);
+$('btn-cc').addEventListener('click', toggleCaptions);
 els.sound.textContent = 'MUTE';
 
 renderGuide();
