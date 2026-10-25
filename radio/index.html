@@ -661,7 +661,7 @@ function panBy(dxPx, dyPx, smooth) {
 function jump(dx, dy) {
   cancelAnimationFrame(anim);
   draw();
-  const cx = W / 2, cy = H / 2, min = Math.min(W, H) * 0.035;
+  const cx = W / 2, cy = H / 2, min = Math.min(W, H) * 0.07;   // a real step each press, even where stations crowd together
   let best = null, bs = Infinity;
   for (const sp of spots) {
     if (!sp.vis) continue;
