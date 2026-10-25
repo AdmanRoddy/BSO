@@ -661,19 +661,20 @@ function panBy(dxPx, dyPx, smooth) {
 function jump(dx, dy) {
   cancelAnimationFrame(anim);
   draw();
-  const cx = W / 2, cy = H / 2, min = Math.min(W, H) * 0.07;   // a real step each press, even where stations crowd together
+  // aim for an even step each press (zoom in with D for smaller steps), as straight as the stations allow
+  const cx = W / 2, cy = H / 2, T = Math.min(W, H) * 0.06;
   let best = null, bs = Infinity;
   for (const sp of spots) {
     if (!sp.vis) continue;
     const vx = sp.x - cx, vy = sp.y - cy;
     const along = vx * dx + vy * dy;            // how far in the pressed direction
-    if (along < min) continue;
+    if (along < T * 0.4) continue;
     const across = Math.abs(vx * dy - vy * dx); // how far off to the side
-    if (across > along * 1.2) continue;
-    const score = along + across * 2;
+    if (across > along) continue;
+    const score = Math.abs(along - T) + across * 1.5;
     if (score < bs) { bs = score; best = sp; }
   }
-  if (!best) { panBy(dx * Math.min(W, H) * 0.25, dy * Math.min(W, H) * 0.25, true); return; }
+  if (!best) { panBy(dx * T * 2, dy * T * 2, true); return; }
   animateTo(best.lat, best.lon, view.z, 240);
 }
 function zoomBy(f) { animateTo(view.lat, view.lon, Math.max(2.5, Math.min(160, view.z * f)), 220); }
