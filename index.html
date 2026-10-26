@@ -413,11 +413,25 @@ function onReady() {
   resume = null;
   if (started) tune(chIndex, true);
 }
+// iPhone/iPad: Safari can keep drawing the video while YouTube's buttons on top of it stop being redrawn,
+// so the pause button from the moment the show started stays on the picture after YouTube has hidden it.
+// Changing the frame's size by a pixel for one frame makes Safari draw YouTube's player afresh.
+function repaintPlayer() {
+  const f = $('player');
+  if (!f || f.tagName !== 'IFRAME') return;
+  const w = f.style.width;
+  f.style.transform = 'translateZ(0)';
+  f.style.width = (parseFloat(w) + 1) + 'px';
+  void f.offsetWidth;
+  requestAnimationFrame(() => requestAnimationFrame(() => { f.style.width = w; f.style.transform = ''; }));
+}
+const PHONE = () => TOUCH && !IN_APP;
 function onStateChange(e) {
   const s = e.data;
   if (cueWaiter && (s === YT.PlayerState.CUED || s === YT.PlayerState.UNSTARTED)) { cueWaiter(); return; }
   if (!prog || prog.token !== token) return;
   dbg('state ' + s + (prog.vid ? ' ' + prog.vid : ''));
+  if (PHONE()) setTimeout(repaintPlayer, 500);
   if (s === YT.PlayerState.PLAYING) {
     if (IOS) tapDone();
     hideNotice();
@@ -436,6 +450,8 @@ function onStateChange(e) {
       showInfo();
       prog.revealAt = Date.now() + REVEAL_DELAY;
       setTimeout(() => { if (prog && prog.token === my && prog.vid === vid) reveal(); }, REVEAL_DELAY);
+      if (PHONE()) [REVEAL_DELAY + 800, REVEAL_DELAY + 4000, REVEAL_DELAY + 10000].forEach((ms) =>
+        setTimeout(() => { if (prog && prog.vid === vid) repaintPlayer(); }, ms));
     } else if (!prog.revealAt || Date.now() >= prog.revealAt) reveal();
   } else if (s === YT.PlayerState.ENDED) {
     next(false);
@@ -722,6 +738,8 @@ const IN_APP = !!window.BSO_IN_APP || /BSOTV/i.test(navigator.userAgent);    // 
 // Phones and tablets: leave the middle of the picture to YouTube's player (see the note by #touch in the styles).
 if (TOUCH && !IN_APP) {
   const b = document.body;
+  window.addEventListener('blur', () => { if (started) { setTimeout(repaintPlayer, 600); setTimeout(repaintPlayer, 4000); } });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && started) setTimeout(repaintPlayer, 800); });
   b.classList.add('holed');
   const sync = () => b.classList.toggle('covered', els.stat.classList.contains('on') || els.ad.classList.contains('on')
     || els.guide.classList.contains('open') || !els.notice.hidden);
