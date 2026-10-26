@@ -660,11 +660,12 @@ function restart() {
   player.seekTo(0, true); player.playVideo();
   showInfo();
 }
-// Top of the hour: every channel rolls to its next program from the start, like a TV schedule.
+// Top of the hour, with "Jump in mid-show" on: every channel rolls to its next program, like a TV schedule.
+// With it off (the default, shows start from the top), the show you're watching plays to its end first.
 let lastHour = hourNow();
 setInterval(() => {
   const h = hourNow();
-  if (h !== lastHour && started && prog && !prog.pinned) { lastHour = h; prog.seq = -1; next(false); prog.tries = 0; }
+  if (h !== lastHour && liveJump && started && prog && !prog.pinned) { lastHour = h; prog.seq = -1; next(false); prog.tries = 0; }
   lastHour = h;
   if (!els.banner.classList.contains('hide')) updateProgress();
 }, 1000);
